@@ -1,0 +1,25 @@
+# --- Java & Build ---
+*.class          # 컴파일된 클래스 파일
+target/          # Maven 빌드 결과물
+build/           # Gradle 빌드 결과물
+*.jar            # 빌드된 라이브러리 파일
+*.war
+
+# --- IDE (에디터) 설정 ---
+.idea/           # IntelliJ 설정 폴더
+*.iml            # IntelliJ 프로젝트 파일
+.settings/       # Eclipse 설정
+.metadata/       # Eclipse 메타데이터
+.classpath
+.project
+.vscode/         # VS Code 설정
+
+# --- OS & 환경 변수 ---
+.DS_Store        # macOS 시스템 파일
+Thumbs.db        # Windows 미리보기 파일
+.env             # 보안이 필요한 환경 변수 (DB 비번 등)
+
+# --- 각 파트별 제외 (예시) ---
+node_modules/    # Frontend 라이브러리
+venv/            # Python 가상환경 (AI 파트)
+__pycache__/     # Python 캐시 파일
