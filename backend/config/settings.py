@@ -11,7 +11,7 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-temp-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-
+KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
 
 # 앱
 INSTALLED_APPS = [
