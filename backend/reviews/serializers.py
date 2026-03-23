@@ -59,7 +59,6 @@ class QuoteNoteCreateUpdateSerializer(serializers.Serializer):
     quoted_text = serializers.CharField()
     note = serializers.CharField(required=False, allow_blank=True)
     page_number = serializers.IntegerField(required=False, allow_null=True)
-    visibility = serializers.ChoiceField(choices=["public", "private"], default="private")
 
 
 class QuoteNoteListSerializer(serializers.ModelSerializer):
@@ -76,7 +75,6 @@ class QuoteNoteListSerializer(serializers.ModelSerializer):
             "quoted_text",
             "note",
             "page_number",
-            "visibility",
             "created_at",
             "updated_at",
         ]
@@ -96,7 +94,6 @@ class QuoteNoteDetailSerializer(serializers.ModelSerializer):
             "quoted_text",
             "note",
             "page_number",
-            "visibility",
             "created_at",
             "updated_at",
         ]

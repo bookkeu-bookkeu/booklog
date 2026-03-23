@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -9,7 +9,7 @@ from .utils import map_kakao_book_document
 
 
 class BookSearchAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         query = request.query_params.get("query", "").strip()
@@ -90,7 +90,7 @@ class BookSearchAPIView(APIView):
 
 
 class ExternalBookDetailAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         isbn = request.query_params.get("isbn", "").strip()
@@ -139,7 +139,7 @@ class ExternalBookDetailAPIView(APIView):
 
 
 class BookImportAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         serializer = BookImportRequestSerializer(data=request.data)

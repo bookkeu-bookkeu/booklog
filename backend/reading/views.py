@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.permissions import IsOwner
 from .models import UserBook
 from .serializers import (
     UserBookCreateUpdateSerializer,
@@ -49,22 +50,23 @@ class UserBookListCreateAPIView(APIView):
 
 
 class UserBookDetailAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
 
-    def get_object(self, user, pk):
-        return get_object_or_404(
+    def get_object(self, request, pk):
+        user_book = get_object_or_404(
             UserBook.objects.select_related("book", "shelf"),
             id=pk,
-            user=user,
         )
+        self.check_object_permissions(request, user_book)
+        return user_book
 
     def get(self, request, pk):
-        user_book = self.get_object(request.user, pk)
+        user_book = self.get_object(request, pk)
         serializer = UserBookDetailSerializer(user_book)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
-        user_book = self.get_object(request.user, pk)
+        user_book = self.get_object(request, pk)
 
         serializer = UserBookCreateUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -81,6 +83,6 @@ class UserBookDetailAPIView(APIView):
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
-        user_book = self.get_object(request.user, pk)
+        user_book = self.get_object(request, pk)
         user_book.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

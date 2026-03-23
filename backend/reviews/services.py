@@ -45,7 +45,6 @@ class QuoteNoteService:
         quoted_text,
         note="",
         page_number=None,
-        visibility="private",
     ):
         book = get_object_or_404(Book, id=book_id)
 
@@ -60,7 +59,7 @@ class QuoteNoteService:
             quoted_text=quoted_text,
             note=note,
             page_number=page_number,
-            visibility=visibility,
+            visibility=QuoteNote.VISIBILITY_PRIVATE,
         )
 
     @staticmethod
@@ -70,7 +69,6 @@ class QuoteNoteService:
         quoted_text=None,
         note=None,
         page_number=None,
-        visibility=None,
     ):
         if quoted_text is not None:
             quote_note.quoted_text = quoted_text
@@ -78,9 +76,8 @@ class QuoteNoteService:
             quote_note.note = note
         if page_number is not None:
             quote_note.page_number = page_number
-        if visibility is not None:
-            quote_note.visibility = visibility
 
+        quote_note.visibility = QuoteNote.VISIBILITY_PRIVATE
         quote_note.save()
         return quote_note
 
