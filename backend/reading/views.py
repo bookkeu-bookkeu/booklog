@@ -18,7 +18,11 @@ class UserBookListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = UserBook.objects.filter(user=request.user).select_related("book", "shelf")
+        queryset = (
+            UserBook.objects.filter(user=request.user)
+            .select_related("book", "shelf")
+            .prefetch_related("book__authors")
+        )
 
         shelf_code = request.query_params.get("shelf")
         if shelf_code:

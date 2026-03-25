@@ -16,7 +16,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import CalendarScreen from '../screens/calendar/CalendarScreen';
 import HomeScreen from '../screens/home/HomeScreen';
-import LibraryScreen from '../screens/home/LibraryScreen';
+import LibraryScreen from '../screens/library/LibraryScreen';
 import SearchNavigator from './SearchNavigator';
 
 const Tab = createBottomTabNavigator();
@@ -74,6 +74,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   const handleTabPress = (routeIndex: number) => {
     const route = state.routes[routeIndex];
+    const isFocused = activeIndex === routeIndex;
     const event = navigation.emit({
       type: 'tabPress',
       target: route.key,
@@ -85,6 +86,10 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     }
 
     navigation.navigate(route.name);
+
+    if (!isFocused) {
+      return;
+    }
 
     const nestedState = route.state as { key?: string } | undefined;
     if (nestedState?.key) {
