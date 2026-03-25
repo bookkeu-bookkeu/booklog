@@ -8,5 +8,4 @@ urlpatterns = [
     path("books/", include("books.urls")),
     path("reading/", include("reading.urls")),
     path("reviews/", include("reviews.urls")),
-    path("rbti/", include("rbti.urls")),
 ]
