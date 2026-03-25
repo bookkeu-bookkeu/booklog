@@ -25,7 +25,7 @@ class KakaoBookService:
         }
 
     @classmethod
-    def search_books(cls, query, page=1, size=10, sort="accuracy", target=None):
+    def search_books(cls, query, page=1, size=20, sort="accuracy", target=None):
         params = {
             "query": query,
             "page": page,

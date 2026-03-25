@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { clearTokens, getAccessToken, saveTokens } from '../utils/tokenStorage';
+import { configureApiAuthHandlers } from '../api/client';
 import { getMe, login as loginApi } from '../api/auth';
 
 export interface User {
@@ -101,3 +102,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 }));
+
+configureApiAuthHandlers({
+  onUnauthorized: () => useAuthStore.getState().logout(),
+  onAccessTokenRefreshed: (token) => useAuthStore.getState().setAccessToken(token),
+});

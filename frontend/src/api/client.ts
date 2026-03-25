@@ -6,8 +6,12 @@ import {
   getRefreshToken,
   saveAccessToken,
 } from '../utils/tokenStorage';
-import { refreshAccessToken } from './auth';
-import { useAuthStore } from '../store/useAuthStore';
+import { refreshAccessToken } from './token';
+
+interface AuthEventHandlers {
+  onUnauthorized?: () => void | Promise<void>;
+  onAccessTokenRefreshed?: (token: string) => void | Promise<void>;
+}
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -23,6 +27,11 @@ export const api = axios.create({
 
 let isRefreshing = false;
 let refreshSubscribers: ((token: string | null) => void)[] = [];
+let authEventHandlers: AuthEventHandlers = {};
+
+export function configureApiAuthHandlers(handlers: AuthEventHandlers) {
+  authEventHandlers = handlers;
+}
 
 function subscribeTokenRefresh(callback: (token: string | null) => void) {
   refreshSubscribers.push(callback);
@@ -68,7 +77,7 @@ api.interceptors.response.use(
 
     if (!refreshToken) {
       await clearTokens();
-      useAuthStore.getState().logout();
+      await authEventHandlers.onUnauthorized?.();
       return Promise.reject(error);
     }
 
@@ -97,7 +106,7 @@ api.interceptors.response.use(
       }
 
       await saveAccessToken(newAccessToken);
-      useAuthStore.getState().setAccessToken(newAccessToken);
+  await authEventHandlers.onAccessTokenRefreshed?.(newAccessToken);
 
       notifyRefreshSubscribers(newAccessToken);
 
@@ -106,7 +115,7 @@ api.interceptors.response.use(
     } catch (refreshError) {
       notifyRefreshSubscribers(null);
       await clearTokens();
-      await useAuthStore.getState().logout();
+      await authEventHandlers.onUnauthorized?.();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

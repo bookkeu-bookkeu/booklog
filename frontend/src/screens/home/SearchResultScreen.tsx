@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -11,8 +13,9 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Book, SearchStackParamList } from '../../navigation/types';
+import { searchBooks } from '../../api/books';
 
-type Props = NativeStackScreenProps<SearchStackParamList, 'SearchHome'>;
+type Props = NativeStackScreenProps<SearchStackParamList, 'SearchResult'>;
 
 type BookLike = Book & {
   id?: number | string;
@@ -33,21 +36,52 @@ type BookLike = Book & {
   is_in_shelf?: boolean;
 };
 
-const PLACEHOLDER_RBTI = '';
-const mockRecommendedBooks: BookLike[] = [];
+const MAX_RESULTS = 20;
 
-export default function SearchScreen({ navigation }: Props) {
-  const [recommendedBooks] = useState<BookLike[]>(mockRecommendedBooks);
+export default function SearchResultScreen({ navigation, route }: Props) {
+  const keyword = route.params.keyword;
+  const [books, setBooks] = useState<BookLike[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const titleText = useMemo(() => {
-    return `${PLACEHOLDER_RBTI}사용자 RBTI 유형에게 가장 인기있는 책`;
-  }, []);
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        setLoading(true);
+        const response = await searchBooks(keyword);
+        const limitedResults = ((response?.results ?? []) as BookLike[]).slice(
+          0,
+          MAX_RESULTS
+        );
+        setBooks(limitedResults);
+      } catch (error) {
+        console.log('책 검색 실패', error);
+        Alert.alert('알림', '검색 결과를 불러오지 못했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooks();
+  }, [keyword]);
+
+  const resultCountText = useMemo(() => {
+    if (loading) return '검색 중';
+    return `${books.length}권의 검색 결과`;
+  }, [loading, books.length]);
+
+  const handlePressBook = (book: BookLike) => {
+    Alert.alert('도서 선택', `${book.title} 상세 화면으로 연결하면 됩니다.`);
+  };
 
   const renderHeader = () => (
     <View style={styles.headerWrapper}>
       <Pressable
         style={styles.searchBox}
-        onPress={() => navigation.navigate('SearchInput')}
+        onPress={() =>
+          navigation.navigate('SearchInput', {
+            initialKeyword: keyword,
+          })
+        }
       >
         <Ionicons
           name="search-outline"
@@ -55,49 +89,49 @@ export default function SearchScreen({ navigation }: Props) {
           color="#2F2A24"
           style={styles.searchIcon}
         />
-        <Text style={styles.searchPlaceholder} numberOfLines={1}>
-          Search...
+        <Text style={styles.searchText} numberOfLines={1}>
+          {keyword}
         </Text>
       </Pressable>
 
       <View style={styles.titleCard}>
-        <Text style={styles.recommendTitle}>
-          {PLACEHOLDER_RBTI ? (
-            <>
-              지금 <Text style={styles.highlight}>{PLACEHOLDER_RBTI}</Text>사용자 RBTI
-              유형에게{'\n'}가장 인기있는 책
-            </>
-          ) : (
-            <>
-              지금 <Text style={styles.highlight}>사용자 RBTI 유형</Text>에게{'\n'}
-              가장 인기있는 책
-            </>
-          )}
-        </Text>
+        <Text style={styles.title}>검색 결과</Text>
+        <Text style={styles.count}>{resultCountText}</Text>
       </View>
     </View>
   );
 
-  const renderEmpty = () => (
-    <View style={styles.emptyBox}>
-      <Text style={styles.emptyTitle}>추천 도서 준비 중이에요</Text>
-      <Text style={styles.emptyDescription}>
-        RBTI 추천 API가 연결되면 이 화면에 도서가 표시됩니다.
-      </Text>
-    </View>
-  );
+  const renderEmpty = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="small" color="#F5C24B" />
+          <Text style={styles.loadingText}>책 정보를 불러오고 있어요</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyBox}>
+        <Text style={styles.emptyTitle}>검색 결과가 없어요</Text>
+        <Text style={styles.emptyDescription}>
+          다른 검색어로 다시 시도해보세요.
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
-        data={recommendedBooks}
+        data={loading ? [] : books}
         keyExtractor={(item, index) =>
           String(item.external_api_id ?? item.id ?? `${item.title}-${index}`)
         }
         renderItem={({ item }) => (
           <ResultCard
             book={item}
-            onPress={() => {}}
+            onPress={() => handlePressBook(item)}
           />
         )}
         ListHeaderComponent={renderHeader}
@@ -220,7 +254,7 @@ function isBookAdded(book: BookLike) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
   },
   contentContainer: {
     paddingHorizontal: 16,
@@ -242,28 +276,28 @@ const styles = StyleSheet.create({
   searchIcon: {
     marginRight: 10,
   },
-  searchPlaceholder: {
+  searchText: {
     flex: 1,
     fontSize: 16,
-    color: '#9AA0AA',
+    color: '#2F2A24',
   },
   titleCard: {
     marginTop: 14,
     marginBottom: 6,
-    paddingHorizontal: 6,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
   },
-  recommendTitle: {
+  title: {
     fontSize: 20,
-    lineHeight: 28,
     fontWeight: '700',
     color: '#2D2F36',
+    marginBottom: 4,
   },
-  highlight: {
-    color: '#F09D22',
-    fontWeight: '700',
+  count: {
+    fontSize: 14,
+    color: '#8B909B',
   },
   card: {
     height: 122,
@@ -337,8 +371,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666A73',
   },
+  loadingBox: {
+    paddingTop: 56,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#8B909B',
+  },
   emptyBox: {
-    paddingTop: 24,
+    paddingTop: 72,
     alignItems: 'center',
   },
   emptyTitle: {
@@ -350,6 +393,5 @@ const styles = StyleSheet.create({
   emptyDescription: {
     fontSize: 13,
     color: '#8B909B',
-    textAlign: 'center',
   },
 });

@@ -1,6 +1,4 @@
-import axios from 'axios';
 import { api } from './client';
-import { API_BASE_URL, REFRESH_PATH } from '../constants/config';
 
 export interface SignupPayload {
   email: string;
@@ -26,19 +24,5 @@ export const login = async (payload: LoginPayload) => {
 
 export const getMe = async () => {
   const { data } = await api.get('/users/me/');
-  return data;
-};
-
-export const refreshAccessToken = async (refresh: string) => {
-  const { data } = await axios.post(
-    `${API_BASE_URL}${REFRESH_PATH}`,
-    { refresh },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    },
-  );
-
   return data;
 };
