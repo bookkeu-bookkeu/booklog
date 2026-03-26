@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
   PanResponder,
@@ -56,6 +57,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
   const isAnimatingRef = React.useRef(false);
 
   const currentBook = route.params?.book;
+  const selectMode = route.params?.mode ?? 'quote';
 
   const horizontalPadding = 28;
   const interCardGap = 18;
@@ -197,6 +199,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
 
   const handleApply = () => {
     if (!selectedBook) {
+      Alert.alert('알림', '책을 선택해 주세요.');
       return;
     }
 
@@ -214,6 +217,11 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
       thumbnail: selectedBook.book_thumbnail_url ?? '',
       is_in_library: true,
     };
+
+    if (selectMode === 'review') {
+      navigation.replace('BookReviewCreate', { book: nextBook });
+      return;
+    }
 
     navigation.replace('QuoteNoteCreate', { book: nextBook });
   };
@@ -358,8 +366,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
 
       <View style={styles.footer}>
         <Pressable
-          style={[styles.applyButton, !selectedBook && styles.applyButtonDisabled]}
-          disabled={!selectedBook}
+          style={styles.applyButton}
           onPress={handleApply}
         >
           <Text style={styles.applyButtonText}>변경하기</Text>
@@ -544,9 +551,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEC54B',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  applyButtonDisabled: {
-    backgroundColor: '#E2C987',
   },
   applyButtonText: {
     fontSize: 15,

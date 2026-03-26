@@ -14,7 +14,11 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SearchStackParamList } from '../../navigation/types';
-import { importBookByIsbn13 } from '../../api/books';
+import {
+  getMyLibraryBooks,
+  importBookByIsbn13,
+  updateLibraryBookShelf,
+} from '../../api/books';
 import { createReview, deleteReview, getBookReviews, updateReview } from '../../api/reviews';
 import BookSummaryCard from '../../components/BookSummaryCard';
 
@@ -87,6 +91,17 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
 
     const imported = await importBookByIsbn13(isbn13);
     return imported.id;
+  };
+
+  const moveReadingBookToDoneIfNeeded = async (bookId: number) => {
+    const readingBooks = await getMyLibraryBooks('READING');
+    const matched = readingBooks.find((item) => item.book_id === bookId);
+
+    if (!matched) {
+      return;
+    }
+
+    await updateLibraryBookShelf(matched.id, 'DONE');
   };
 
   useEffect(() => {
@@ -175,6 +190,13 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
           content: trimmedContent,
           visibility,
         });
+      }
+
+      try {
+        await moveReadingBookToDoneIfNeeded(bookId);
+      } catch (statusError) {
+        console.log('리뷰 저장 후 상태 변경 실패', statusError);
+        Alert.alert('안내', '리뷰는 저장되었지만 도서 상태를 완료로 변경하지 못했습니다.');
       }
 
       navigation.goBack();

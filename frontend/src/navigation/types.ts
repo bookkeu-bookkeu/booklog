@@ -27,6 +27,7 @@ export type SearchStackParamList = {
   };
   QuoteNoteBookSelect: {
     book?: Book;
+    mode?: 'quote' | 'review';
   };
   QuoteNoteCreate: {
     book?: Book;

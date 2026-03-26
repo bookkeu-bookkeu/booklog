@@ -1,6 +1,7 @@
 import React from 'react';
 import {
-  Alert,
+  Animated,
+  Easing,
   Pressable,
   StyleSheet,
   Text,
@@ -40,6 +41,8 @@ function TabItem({ label, focused, onPress, icon }: TabItemProps) {
 }
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = React.useState(false);
+  const menuAnimation = React.useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const activeIndex = state.index;
@@ -81,10 +84,6 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     focusedLibraryRouteName === 'QuoteNoteBookSelect' ||
     focusedLibraryRouteName === 'QuoteNoteCreate';
 
-  if (shouldHideTabBar) {
-    return null;
-  }
-
   const homeFocused = activeIndex === 0;
   const calendarFocused = activeIndex === 1;
   const searchFocused = activeIndex === 2;
@@ -92,6 +91,59 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   const baseHeight = 70;
   const tabBarHeight = baseHeight + insets.bottom;
+
+  React.useEffect(() => {
+    Animated.timing(menuAnimation, {
+      toValue: isQuickMenuOpen ? 1 : 0,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [isQuickMenuOpen, menuAnimation]);
+
+  React.useEffect(() => {
+    if (!shouldHideTabBar) {
+      return;
+    }
+
+    setIsQuickMenuOpen(false);
+    menuAnimation.stopAnimation();
+    menuAnimation.setValue(0);
+  }, [shouldHideTabBar, menuAnimation]);
+
+  const quickMenuAnimatedStyle = {
+    opacity: menuAnimation,
+    transform: [
+      {
+        translateY: menuAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [16, 0],
+        }),
+      },
+    ],
+  };
+
+  const backdropAnimatedStyle = {
+    opacity: menuAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    }),
+  };
+
+  const plusIconAnimatedStyle = {
+    transform: [
+      {
+        rotate: menuAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0deg', '45deg'],
+        }),
+      },
+    ],
+  };
+
+  if (shouldHideTabBar) {
+    return null;
+  }
 
   // --- SVG 경로(Path) 계산 ---
   const center = width / 2;
@@ -114,6 +166,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   `;
 
   const handleTabPress = (routeIndex: number) => {
+    setIsQuickMenuOpen(false);
+
     const route = state.routes[routeIndex];
     const isFocused = activeIndex === routeIndex;
     const event = navigation.emit({
@@ -141,54 +195,97 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     }
   };
 
+  const openReviewCreate = () => {
+    setIsQuickMenuOpen(false);
+    navigation.navigate('SearchTab', {
+      screen: 'QuoteNoteBookSelect',
+      params: { mode: 'review' },
+    });
+  };
+
+  const openQuoteNoteCreate = () => {
+    setIsQuickMenuOpen(false);
+    navigation.navigate('SearchTab', { screen: 'QuoteNoteBookSelect' });
+  };
+
   return (
-    <View style={[styles.tabBarContainer, { height: tabBarHeight }]} pointerEvents="box-none">
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Svg width={width} height={tabBarHeight}>
-          <Path d={backgroundPath} fill="#FFF6EA" />
-        </Svg>
-      </View>
+    <View style={styles.tabOverlayRoot} pointerEvents="box-none">
+      <Animated.View
+        pointerEvents={isQuickMenuOpen ? 'auto' : 'none'}
+        style={[styles.backdrop, backdropAnimatedStyle]}
+      >
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => setIsQuickMenuOpen(false)} />
+      </Animated.View>
 
-      <View style={styles.centerButtonArea} pointerEvents="box-none">
-        <Pressable
-          style={styles.plusButton}
-          onPress={() => Alert.alert('안내', '추가 기능은 나중에 연결하면 됩니다.')}
-        >
-          <Ionicons name="add" size={38} color="#FFFFFF" />
-        </Pressable>
-      </View>
-
-      <View style={[styles.tabContentRow, { paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 0 }]} pointerEvents="box-none">
-        <View style={styles.sideTabs}>
-          <TabItem
-            label="홈"
-            focused={homeFocused}
-            onPress={() => handleTabPress(0)}
-            icon={<Ionicons name={homeFocused ? 'home' : 'home-outline'} size={24} color={homeFocused ? '#FEC54B' : '#C9C8D1'} />}
-          />
-          <TabItem
-            label="달력"
-            focused={calendarFocused}
-            onPress={() => handleTabPress(1)}
-            icon={<Ionicons name={calendarFocused ? 'calendar' : 'calendar-outline'} size={24} color={calendarFocused ? '#FEC54B' : '#C9C8D1'} />}
-          />
+      <View style={[styles.tabBarContainer, { height: tabBarHeight }]} pointerEvents="box-none">
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg width={width} height={tabBarHeight}>
+            <Path d={backgroundPath} fill="#FFF6EA" />
+          </Svg>
         </View>
 
-        <View style={styles.centerSpacer} />
+        <View style={styles.centerButtonArea} pointerEvents="box-none">
+          <Animated.View
+            style={[styles.quickActionWrap, quickMenuAnimatedStyle]}
+            pointerEvents={isQuickMenuOpen ? 'auto' : 'none'}
+          >
+            <Pressable
+              style={styles.quickActionButton}
+              onPress={openQuoteNoteCreate}
+            >
+              <Ionicons name="book-outline" size={24} color="#F3B331" />
+            </Pressable>
 
-        <View style={styles.sideTabs}>
-          <TabItem
-            label="검색"
-            focused={searchFocused}
-            onPress={() => handleTabPress(2)}
-            icon={<Ionicons name={searchFocused ? 'document-text' : 'document-text-outline'} size={24} color={searchFocused ? '#FEC54B' : '#C9C8D1'} />}
-          />
-          <TabItem
-            label="내서재"
-            focused={libraryFocused}
-            onPress={() => handleTabPress(3)}
-            icon={<Ionicons name={libraryFocused ? 'people' : 'people-outline'} size={24} color={libraryFocused ? '#FEC54B' : '#C9C8D1'} />}
-          />
+            <Pressable
+              style={styles.quickActionButton}
+              onPress={openReviewCreate}
+            >
+              <Ionicons name="chatbubble-outline" size={24} color="#F3B331" />
+            </Pressable>
+          </Animated.View>
+
+          <Pressable
+            style={styles.plusButton}
+            onPress={() => setIsQuickMenuOpen((prev) => !prev)}
+          >
+            <Animated.View style={plusIconAnimatedStyle}>
+              <Ionicons name="add" size={38} color="#FFFFFF" />
+            </Animated.View>
+          </Pressable>
+        </View>
+
+        <View style={[styles.tabContentRow, { paddingBottom: insets.bottom > 0 ? insets.bottom - 10 : 0 }]} pointerEvents="box-none">
+          <View style={styles.sideTabs}>
+            <TabItem
+              label="홈"
+              focused={homeFocused}
+              onPress={() => handleTabPress(0)}
+              icon={<Ionicons name={homeFocused ? 'home' : 'home-outline'} size={24} color={homeFocused ? '#FEC54B' : '#C9C8D1'} />}
+            />
+            <TabItem
+              label="달력"
+              focused={calendarFocused}
+              onPress={() => handleTabPress(1)}
+              icon={<Ionicons name={calendarFocused ? 'calendar' : 'calendar-outline'} size={24} color={calendarFocused ? '#FEC54B' : '#C9C8D1'} />}
+            />
+          </View>
+
+          <View style={styles.centerSpacer} />
+
+          <View style={styles.sideTabs}>
+            <TabItem
+              label="검색"
+              focused={searchFocused}
+              onPress={() => handleTabPress(2)}
+              icon={<Ionicons name={searchFocused ? 'document-text' : 'document-text-outline'} size={24} color={searchFocused ? '#FEC54B' : '#C9C8D1'} />}
+            />
+            <TabItem
+              label="내서재"
+              focused={libraryFocused}
+              onPress={() => handleTabPress(3)}
+              icon={<Ionicons name={libraryFocused ? 'people' : 'people-outline'} size={24} color={libraryFocused ? '#FEC54B' : '#C9C8D1'} />}
+            />
+          </View>
         </View>
       </View>
     </View>
@@ -210,11 +307,15 @@ export default function MainTabNavigator() {
 }
 
 const styles = StyleSheet.create({
+  tabOverlayRoot: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+  },
   tabBarContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     elevation: 10,
     shadowColor: '#000',
     shadowOpacity: 0.05,
@@ -241,6 +342,28 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
+  },
+  quickActionWrap: {
+    position: 'absolute',
+    bottom: 78,
+    width: 126,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quickActionButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
   },
   tabContentRow: {
     flex: 1,
