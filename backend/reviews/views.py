@@ -22,11 +22,17 @@ class ReviewListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Review.objects.select_related("user", "book", "user_book")
+        queryset = Review.objects.select_related(
+            "user",
+            "book",
+            "user_book",
+            "analysis_result__inferred_rbti_type",
+        )
 
         book_id = request.query_params.get("book_id")
         mine = request.query_params.get("mine")
         visibility = request.query_params.get("visibility")
+        rbti_code = request.query_params.get("rbti_code")
 
         if book_id:
             queryset = queryset.filter(book_id=book_id)
@@ -38,6 +44,13 @@ class ReviewListCreateAPIView(APIView):
 
         if visibility in ["public", "private"] and mine == "true":
             queryset = queryset.filter(visibility=visibility)
+
+        if rbti_code:
+            code = rbti_code.strip()
+            queryset = queryset.filter(
+                user__rbti_snapshots__is_current=True,
+                user__rbti_snapshots__rbti_type__code__iexact=code,
+            ).distinct()
 
         queryset = queryset.order_by("-created_at")
 
@@ -53,7 +66,7 @@ class ReviewListCreateAPIView(APIView):
                 user=request.user,
                 book_id=serializer.validated_data["book_id"],
                 user_book_id=serializer.validated_data.get("user_book_id"),
-                title=serializer.validated_data["title"],
+                rating=serializer.validated_data["rating"],
                 content=serializer.validated_data["content"],
                 visibility=serializer.validated_data["visibility"],
             )
@@ -97,7 +110,7 @@ class ReviewDetailAPIView(APIView):
 
         updated = ReviewService.update_review(
             review=review,
-            title=serializer.validated_data.get("title"),
+            rating=serializer.validated_data.get("rating"),
             content=serializer.validated_data.get("content"),
             visibility=serializer.validated_data.get("visibility"),
         )

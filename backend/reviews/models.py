@@ -1,6 +1,7 @@
 # reviews/models.py
 
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from common.models import SoftDeleteModel, TimeStampedModel
 
@@ -31,7 +32,10 @@ class Review(TimeStampedModel, SoftDeleteModel):
         blank=True,
         related_name="reviews",
     )
-    title = models.CharField(max_length=255)
+    rating = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
     content = models.TextField()
     visibility = models.CharField(
         max_length=10,

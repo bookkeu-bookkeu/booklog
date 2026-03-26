@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getMyLibraryBooks } from '../../api/books';
 import AnimatedContentSwitcher from './components/AnimatedContentSwitcher';
@@ -28,6 +30,7 @@ import {
 } from './libraryTypes';
 
 export default function LibraryScreen() {
+  const navigation = useNavigation<any>();
   const [activeTab, setActiveTab] = useState<ShelfTabKey>('reading');
   const [displayedTab, setDisplayedTab] = useState<ShelfTabKey>('reading');
   const [transition, setTransition] = useState<TabTransitionState | null>(null);
@@ -55,44 +58,37 @@ export default function LibraryScreen() {
   const cardWidth = (width - horizontalPadding * 2 - interCardGap) / 2;
   const swipeThreshold = Math.min(92, width * 0.22);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchLibraryBooks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
 
-    const fetchLibraryBooks = async () => {
-      try {
-        setIsLoading(true);
-        setLoadError(null);
+      const response = await getMyLibraryBooks();
 
-        const response = await getMyLibraryBooks();
+      const grouped: Record<ShelfTabKey, LibraryBook[]> = {
+        wish: [],
+        reading: [],
+        done: [],
+      };
 
-        if (!isMounted) return;
+      response.forEach((item) => {
+        const tab = mapShelfCodeToTab(item.shelf_code);
+        grouped[tab].push(mapUserLibraryBook(item));
+      });
 
-        const grouped: Record<ShelfTabKey, LibraryBook[]> = {
-          wish: [],
-          reading: [],
-          done: [],
-        };
-
-        response.forEach((item) => {
-          const tab = mapShelfCodeToTab(item.shelf_code);
-          grouped[tab].push(mapUserLibraryBook(item));
-        });
-
-        setBooksByTab(grouped);
-      } catch (error) {
-        if (!isMounted) return;
-        setLoadError('내 서재 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    fetchLibraryBooks();
-
-    return () => {
-      isMounted = false;
-    };
+      setBooksByTab(grouped);
+    } catch (error) {
+      setLoadError('내 서재 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchLibraryBooks();
+    }, [fetchLibraryBooks]),
+  );
 
   const handleTabChange = (nextTab: ShelfTabKey) => {
     if (nextTab === activeTab || isAnimatingRef.current) return;
@@ -225,6 +221,9 @@ export default function LibraryScreen() {
           scrollRefs.current[tab] = node;
         }}
         renderEmpty={renderEmpty}
+        onPressBook={(book) =>
+          navigation.navigate('BookDetail', { book: book.detailBook })
+        }
       />
     );
   };

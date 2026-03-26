@@ -5,13 +5,14 @@ import { LibraryBook } from '../libraryTypes';
 
 type Props = {
   book: LibraryBook;
+  onPress?: () => void;
 };
 
-export default function LibraryBookCard({ book }: Props) {
+export default function LibraryBookCard({ book, onPress }: Props) {
   const hasThumbnail = !!book.thumbnail?.trim();
 
   return (
-    <Pressable style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress}>
       {hasThumbnail ? (
         <Image source={{ uri: book.thumbnail }} style={styles.thumbnail} resizeMode="cover" />
       ) : (

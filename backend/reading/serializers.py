@@ -8,6 +8,8 @@ class UserBookCreateUpdateSerializer(serializers.Serializer):
     shelf_code = serializers.ChoiceField(choices=["WANT", "READING", "DONE"])
     started_at = serializers.DateField(required=False, allow_null=True)
     finished_at = serializers.DateField(required=False, allow_null=True)
+    book_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    page_count = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     is_favorite = serializers.BooleanField(required=False)
 
     def validate(self, attrs):
@@ -47,6 +49,8 @@ class UserBookListSerializer(serializers.ModelSerializer):
             "shelf_name",
             "started_at",
             "finished_at",
+            "book_type",
+            "page_count",
             "rating",
             "is_favorite",
             "created_at",
@@ -69,6 +73,8 @@ class UserBookDetailSerializer(serializers.ModelSerializer):
             "shelf_name",
             "started_at",
             "finished_at",
+            "book_type",
+            "page_count",
             "rating",
             "is_favorite",
             "created_at",

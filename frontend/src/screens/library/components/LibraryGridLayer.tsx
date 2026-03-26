@@ -13,6 +13,7 @@ type Props = {
   cardWidth: number;
   scrollRef: (node: ScrollView | null) => void;
   renderEmpty: () => React.ReactNode;
+  onPressBook: (book: LibraryBook) => void;
 };
 
 export default function LibraryGridLayer({
@@ -25,6 +26,7 @@ export default function LibraryGridLayer({
   cardWidth,
   scrollRef,
   renderEmpty,
+  onPressBook,
 }: Props) {
   return (
     <Animated.View
@@ -47,7 +49,7 @@ export default function LibraryGridLayer({
           <View style={[styles.gridWrap, { columnGap: interCardGap }]}>
             {books.map((item) => (
               <View key={`${tab}-${item.id}`} style={[styles.gridItem, { width: cardWidth }]}>
-                <LibraryBookCard book={item} />
+                <LibraryBookCard book={item} onPress={() => onPressBook(item)} />
               </View>
             ))}
           </View>

@@ -1,3 +1,5 @@
+import { Book } from '../../navigation/types';
+
 export type ShelfTabKey = 'wish' | 'reading' | 'done';
 
 export type TabTransitionState = {
@@ -12,6 +14,7 @@ export type LibraryBook = {
   author: string;
   publisher: string;
   thumbnail?: string;
+  detailBook: Book;
 };
 
 export const TAB_ORDER: ShelfTabKey[] = ['wish', 'reading', 'done'];

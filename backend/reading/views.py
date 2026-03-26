@@ -43,6 +43,8 @@ class UserBookListCreateAPIView(APIView):
             shelf_code=serializer.validated_data["shelf_code"],
             started_at=serializer.validated_data.get("started_at"),
             finished_at=serializer.validated_data.get("finished_at"),
+            book_type=serializer.validated_data.get("book_type"),
+            page_count=serializer.validated_data.get("page_count"),
             is_favorite=serializer.validated_data.get("is_favorite", False),
         )
 
@@ -77,10 +79,12 @@ class UserBookDetailAPIView(APIView):
 
         updated = UserBookService.update_user_book(
             user_book=user_book,
-            shelf_code=serializer.validated_data.get("shelf_code"),
-            started_at=serializer.validated_data.get("started_at"),
-            finished_at=serializer.validated_data.get("finished_at"),
-            is_favorite=serializer.validated_data.get("is_favorite"),
+            shelf_code=serializer.validated_data.get("shelf_code", ...),
+            started_at=serializer.validated_data.get("started_at", ...),
+            finished_at=serializer.validated_data.get("finished_at", ...),
+            book_type=serializer.validated_data.get("book_type", ...),
+            page_count=serializer.validated_data.get("page_count", ...),
+            is_favorite=serializer.validated_data.get("is_favorite", ...),
         )
 
         response_serializer = UserBookDetailSerializer(updated)

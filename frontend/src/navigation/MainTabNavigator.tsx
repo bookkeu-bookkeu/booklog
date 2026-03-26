@@ -16,7 +16,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import CalendarScreen from '../screens/calendar/CalendarScreen';
 import HomeScreen from '../screens/home/HomeScreen';
-import LibraryScreen from '../screens/library/LibraryScreen';
+import LibraryNavigator from './LibraryNavigator';
 import SearchNavigator from './SearchNavigator';
 
 const Tab = createBottomTabNavigator();
@@ -43,13 +43,54 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const activeIndex = state.index;
+  const activeRoute = state.routes[activeIndex];
+
+  const nestedSearchState =
+    activeRoute.name === 'SearchTab'
+      ? (activeRoute.state as
+          | {
+              index?: number;
+              routes?: Array<{ name?: string }>;
+            }
+          | undefined)
+      : undefined;
+  const focusedSearchRouteName =
+    nestedSearchState?.routes?.[nestedSearchState.index ?? 0]?.name;
+  const nestedLibraryState =
+    activeRoute.name === 'LibraryTab'
+      ? (activeRoute.state as
+          | {
+              index?: number;
+              routes?: Array<{ name?: string }>;
+            }
+          | undefined)
+      : undefined;
+  const focusedLibraryRouteName =
+    nestedLibraryState?.routes?.[nestedLibraryState.index ?? 0]?.name;
+  const shouldHideTabBar =
+    focusedSearchRouteName === 'BookDetail' ||
+    focusedSearchRouteName === 'BookReview' ||
+    focusedSearchRouteName === 'BookReviewCreate' ||
+    focusedSearchRouteName === 'QuoteNote' ||
+    focusedSearchRouteName === 'QuoteNoteBookSelect' ||
+    focusedSearchRouteName === 'QuoteNoteCreate' ||
+    focusedLibraryRouteName === 'BookDetail' ||
+    focusedLibraryRouteName === 'BookReview' ||
+    focusedLibraryRouteName === 'BookReviewCreate' ||
+    focusedLibraryRouteName === 'QuoteNote' ||
+    focusedLibraryRouteName === 'QuoteNoteBookSelect' ||
+    focusedLibraryRouteName === 'QuoteNoteCreate';
+
+  if (shouldHideTabBar) {
+    return null;
+  }
 
   const homeFocused = activeIndex === 0;
   const calendarFocused = activeIndex === 1;
   const searchFocused = activeIndex === 2;
   const libraryFocused = activeIndex === 3;
 
-  const baseHeight = 84;
+  const baseHeight = 70;
   const tabBarHeight = baseHeight + insets.bottom;
 
   // --- SVG 경로(Path) 계산 ---
@@ -163,7 +204,7 @@ export default function MainTabNavigator() {
       <Tab.Screen name="HomeTab" component={HomeScreen} />
       <Tab.Screen name="CalendarTab" component={CalendarScreen} />
       <Tab.Screen name="SearchTab" component={SearchNavigator} />
-      <Tab.Screen name="LibraryTab" component={LibraryScreen} />
+      <Tab.Screen name="LibraryTab" component={LibraryNavigator} />
     </Tab.Navigator>
   );
 }
@@ -182,7 +223,7 @@ const styles = StyleSheet.create({
   },
   centerButtonArea: {
     position: 'absolute',
-    top: -28, 
+    top: -24,
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',

@@ -13,6 +13,27 @@ export type SearchStackParamList = {
   SearchResult: {
     keyword: string;
   };
+  BookDetail: {
+    book: Book;
+  };
+  BookReview: {
+    book?: Book;
+  };
+  BookReviewCreate: {
+    book?: Book;
+  };
+  QuoteNote: {
+    book?: Book;
+  };
+  QuoteNoteBookSelect: {
+    book?: Book;
+  };
+  QuoteNoteCreate: {
+    book?: Book;
+    quoteNoteId?: number;
+    initialPageNumber?: number | null;
+    initialQuotedText?: string;
+  };
 };
 
 export type MainTabParamList = {

@@ -8,11 +8,30 @@ export function mapShelfCodeToTab(shelfCode: UserLibraryBook['shelf_code']): She
 }
 
 export function mapUserLibraryBook(item: UserLibraryBook): LibraryBook {
+  const title = item.book_title?.trim() || '제목 없음';
+  const publisher = item.book_publisher?.trim() || '출판사';
+  const thumbnail = item.book_thumbnail_url?.trim() || '';
+  const isbn13 = item.book_isbn13?.trim() || '';
+
   return {
     id: String(item.id),
-    title: item.book_title?.trim() || '제목 없음',
+    title,
     author: item.book_authors?.length ? item.book_authors.join(', ') : '저자 미상',
-    publisher: item.book_publisher?.trim() || '출판사',
-    thumbnail: item.book_thumbnail_url?.trim() || undefined,
+    publisher,
+    thumbnail: thumbnail || undefined,
+    detailBook: {
+      source: 'library',
+      external_api_id: String(item.book_id),
+      title,
+      contents: '',
+      url: '',
+      isbn: isbn13,
+      isbn13,
+      authors: item.book_authors ?? [],
+      publisher,
+      published_at: '',
+      thumbnail,
+      is_in_library: true,
+    },
   };
 }

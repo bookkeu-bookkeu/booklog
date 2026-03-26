@@ -15,18 +15,17 @@ class ReviewAdmin(admin.ModelAdmin):
         "id",
         "user",
         "book",
-        "title",
+        "rating",
         "visibility",
         "like_count",
         "created_at",
         "deleted_at",
     )
-    list_filter = ("visibility",)
+    list_filter = ("visibility", "rating")
     search_fields = (
         "user__email",
         "user__nickname",
         "book__title",
-        "title",
         "content",
     )
     autocomplete_fields = ("user", "book", "user_book")
@@ -60,7 +59,7 @@ class QuoteNoteAdmin(admin.ModelAdmin):
 @admin.register(ReviewLike)
 class ReviewLikeAdmin(admin.ModelAdmin):
     list_display = ("id", "review", "user", "created_at")
-    search_fields = ("review__title", "user__email", "user__nickname")
+    search_fields = ("review__book__title", "user__email", "user__nickname")
     autocomplete_fields = ("review", "user")
     ordering = ("id",)
 
@@ -75,6 +74,6 @@ class KeywordAdmin(admin.ModelAdmin):
 @admin.register(ReviewKeyword)
 class ReviewKeywordAdmin(admin.ModelAdmin):
     list_display = ("id", "review", "keyword", "weight")
-    search_fields = ("review__title", "keyword__name")
+    search_fields = ("review__book__title", "keyword__name")
     autocomplete_fields = ("review", "keyword")
     ordering = ("id",)

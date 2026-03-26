@@ -6,7 +6,7 @@ from .models import QuoteNote, Review
 class ReviewCreateUpdateSerializer(serializers.Serializer):
     book_id = serializers.IntegerField(required=False)
     user_book_id = serializers.IntegerField(required=False, allow_null=True)
-    title = serializers.CharField(max_length=255)
+    rating = serializers.IntegerField(min_value=1, max_value=5)
     content = serializers.CharField()
     visibility = serializers.ChoiceField(choices=["public", "private"], default="public")
 
@@ -15,6 +15,16 @@ class ReviewListSerializer(serializers.ModelSerializer):
     user_nickname = serializers.CharField(source="user.nickname", read_only=True)
     book_title = serializers.CharField(source="book.title", read_only=True)
     book_thumbnail_url = serializers.CharField(source="book.thumbnail_url", read_only=True)
+    rbti_code = serializers.CharField(
+        source="analysis_result.inferred_rbti_type.code",
+        read_only=True,
+        allow_null=True,
+    )
+    rbti_name = serializers.CharField(
+        source="analysis_result.inferred_rbti_type.name",
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = Review
@@ -24,9 +34,11 @@ class ReviewListSerializer(serializers.ModelSerializer):
             "book",
             "book_title",
             "book_thumbnail_url",
-            "title",
+            "rating",
             "content",
             "visibility",
+            "rbti_code",
+            "rbti_name",
             "like_count",
             "created_at",
             "updated_at",
@@ -35,6 +47,16 @@ class ReviewListSerializer(serializers.ModelSerializer):
 
 class ReviewDetailSerializer(serializers.ModelSerializer):
     user_nickname = serializers.CharField(source="user.nickname", read_only=True)
+    rbti_code = serializers.CharField(
+        source="analysis_result.inferred_rbti_type.code",
+        read_only=True,
+        allow_null=True,
+    )
+    rbti_name = serializers.CharField(
+        source="analysis_result.inferred_rbti_type.name",
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = Review
@@ -44,9 +66,11 @@ class ReviewDetailSerializer(serializers.ModelSerializer):
             "user_nickname",
             "book",
             "user_book",
-            "title",
+            "rating",
             "content",
             "visibility",
+            "rbti_code",
+            "rbti_name",
             "like_count",
             "created_at",
             "updated_at",

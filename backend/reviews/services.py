@@ -7,7 +7,7 @@ from .models import QuoteNote, Review, ReviewLike
 
 class ReviewService:
     @staticmethod
-    def create_review(*, user, book_id, user_book_id=None, title, content, visibility):
+    def create_review(*, user, book_id, user_book_id=None, rating, content, visibility):
         book = get_object_or_404(Book, id=book_id)
 
         user_book = None
@@ -18,15 +18,15 @@ class ReviewService:
             user=user,
             book=book,
             user_book=user_book,
-            title=title,
+            rating=rating,
             content=content,
             visibility=visibility,
         )
 
     @staticmethod
-    def update_review(*, review, title=None, content=None, visibility=None):
-        if title is not None:
-            review.title = title
+    def update_review(*, review, rating=None, content=None, visibility=None):
+        if rating is not None:
+            review.rating = rating
         if content is not None:
             review.content = content
         if visibility is not None:
