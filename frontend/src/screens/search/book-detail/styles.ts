@@ -149,6 +149,19 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2D2F36',
   },
+  recordDatePickerWrap: {
+    minWidth: 86,
+    minHeight: 30,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordDatePickerTouchLayer: {
+    ...StyleSheet.absoluteFillObject,
+    width: 86,
+    height: 30,
+    opacity: 0.02,
+  },
   recordLengthInputWrap: {
     width: 70,
     flexDirection: 'row',
@@ -356,7 +369,7 @@ export const styles = StyleSheet.create({
   sheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    backgroundColor: '#FFFFFF',
   },
   sheetBackdrop: {
     flex: 1,
@@ -412,7 +425,7 @@ export const styles = StyleSheet.create({
   },
   recordSheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(37, 38, 43, 0.22)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'flex-end',
   },
   recordSheetBackdrop: {
@@ -466,89 +479,5 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#F29A2E',
-  },
-  calendarOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(37, 38, 43, 0.26)',
-  },
-  calendarBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  calendarCard: {
-    width: '84%',
-    maxWidth: 340,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    zIndex: 2,
-  },
-  calendarWidget: {
-    borderRadius: 12,
-  },
-  calendarHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  calendarNavButton: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    backgroundColor: '#FFF6EA',
-  },
-  calendarTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2D2F36',
-  },
-  calendarWeekRow: {
-    flexDirection: 'row',
-    marginBottom: 6,
-  },
-  calendarWeekText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#8B909B',
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  calendarDayCell: {
-    width: '14.2857%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  calendarDayText: {
-    fontSize: 13,
-    color: '#2D2F36',
-  },
-  calendarFooterRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  calendarActionButton: {
-    minWidth: 54,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#FFF6EA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  calendarActionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#E67F1E',
   },
 });

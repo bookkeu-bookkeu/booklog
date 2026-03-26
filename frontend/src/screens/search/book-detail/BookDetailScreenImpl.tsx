@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -13,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { Calendar } from 'react-native-calendars';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Book, SearchStackParamList } from '../../../navigation/types';
@@ -68,9 +67,6 @@ export default function BookDetailScreen({ navigation, route }: Props) {
   const [finishedDate, setFinishedDate] = useState<string>('');
   const [bookType, setBookType] = useState<string>('종이책');
   const [bookLength, setBookLength] = useState<string>('');
-  const [calendarVisible, setCalendarVisible] = useState(false);
-  const [calendarTarget, setCalendarTarget] = useState<'start' | 'finish' | null>(null);
-  const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(new Date()));
   const [importedBookId, setImportedBookId] = useState<number | null>(null);
   const [quoteNotes, setQuoteNotes] = useState<QuoteNoteItem[]>([]);
   const [myReview, setMyReview] = useState<ReviewItem | null>(null);
@@ -383,20 +379,6 @@ export default function BookDetailScreen({ navigation, route }: Props) {
     }
   };
 
-  const selectStartedDate = () => {
-    const parsed = parseDateLabel(startedDate);
-    setCalendarTarget('start');
-    setCalendarMonth(startOfMonth(parsed ?? new Date()));
-    setCalendarVisible(true);
-  };
-
-  const selectFinishedDate = () => {
-    const parsed = parseDateLabel(finishedDate);
-    setCalendarTarget('finish');
-    setCalendarMonth(startOfMonth(parsed ?? new Date()));
-    setCalendarVisible(true);
-  };
-
   const selectBookType = () => {
     const saveType = (type: string) => {
       setBookType(type);
@@ -419,31 +401,25 @@ export default function BookDetailScreen({ navigation, route }: Props) {
   const isDoneStatus = userLibraryBook?.shelf_code === 'DONE';
   const hasQuoteNotes = quoteNotes.length > 0;
   const statusLabel = userLibraryBook?.shelf_code === 'DONE' ? '완료' : '읽는 중';
-  const selectedCalendarLabel =
-    calendarTarget === 'start' ? startedDate : calendarTarget === 'finish' ? finishedDate : '';
-  const selectedCalendarDate = toCalendarDateString(selectedCalendarLabel);
 
-  const applyCalendarDate = (dateString: string) => {
-    const label = formatDateLabelFromCalendar(dateString);
-    if (calendarTarget === 'start') {
+  const handleCompactDateChange = (target: 'start' | 'finish', nextDate?: Date) => {
+    if (!nextDate) {
+      return;
+    }
+
+    const label = formatDateLabelFromCalendar(toCalendarDateStringFromDate(nextDate));
+    if (!label) {
+      return;
+    }
+
+    if (target === 'start') {
       setStartedDate(label);
       void persistRecordFields({ started_at: toApiDateString(label) });
-    } else if (calendarTarget === 'finish') {
-      setFinishedDate(label);
-      void persistRecordFields({ finished_at: toApiDateString(label) });
+      return;
     }
-    setCalendarVisible(false);
-  };
 
-  const clearCalendarDate = () => {
-    if (calendarTarget === 'start') {
-      setStartedDate('');
-      void persistRecordFields({ started_at: null });
-    } else if (calendarTarget === 'finish') {
-      setFinishedDate('');
-      void persistRecordFields({ finished_at: null });
-    }
-    setCalendarVisible(false);
+    setFinishedDate(label);
+    void persistRecordFields({ finished_at: toApiDateString(label) });
   };
 
   return (
@@ -504,9 +480,21 @@ export default function BookDetailScreen({ navigation, route }: Props) {
 
                 <View style={styles.recordFieldRow}>
                   <Text style={styles.recordFieldLabel}>시작 날짜</Text>
-                  <Pressable style={styles.recordFieldValueBox} onPress={selectStartedDate}>
-                    <Text style={styles.recordFieldValueText}>{startedDate || '선택'}</Text>
-                  </Pressable>
+                  <View style={styles.recordDatePickerWrap}>
+                    <View style={styles.recordFieldValueBox} pointerEvents="none">
+                      <Text style={styles.recordFieldValueText}>{startedDate || '선택'}</Text>
+                    </View>
+                    <DateTimePicker
+                      value={parseDateLabel(startedDate) ?? new Date()}
+                      mode="date"
+                      display="compact"
+                      locale="ko-KR"
+                      accentColor="#FEC54B"
+                      themeVariant="light"
+                      style={styles.recordDatePickerTouchLayer}
+                      onChange={(_, nextDate) => handleCompactDateChange('start', nextDate)}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.recordFieldRow}>
@@ -516,9 +504,22 @@ export default function BookDetailScreen({ navigation, route }: Props) {
                       <Text style={styles.recordFieldValueText}>-</Text>
                     </View>
                   ) : (
-                    <Pressable style={styles.recordFieldValueBox} onPress={selectFinishedDate}>
-                      <Text style={styles.recordFieldValueText}>{finishedDate || '선택'}</Text>
-                    </Pressable>
+                    <View style={styles.recordDatePickerWrap}>
+                      <View style={styles.recordFieldValueBox} pointerEvents="none">
+                        <Text style={styles.recordFieldValueText}>{finishedDate || '선택'}</Text>
+                      </View>
+                      <DateTimePicker
+                        value={parseDateLabel(finishedDate) ?? new Date()}
+                        mode="date"
+                        display="compact"
+                        locale="ko-KR"
+                        accentColor="#ffae00"
+                        themeVariant="light"
+                        style={styles.recordDatePickerTouchLayer}
+                        minimumDate={parseDateLabel(startedDate) ?? undefined}
+                        onChange={(_, nextDate) => handleCompactDateChange('finish', nextDate)}
+                      />
+                    </View>
                   )}
                 </View>
 
@@ -782,68 +783,6 @@ export default function BookDetailScreen({ navigation, route }: Props) {
         onClose={() => setRecordActionSheetVisible(false)}
       />
 
-      <Modal
-        visible={calendarVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCalendarVisible(false)}
-      >
-        <View style={styles.calendarOverlay}>
-          <Pressable
-            style={styles.calendarBackdrop}
-            onPress={() => setCalendarVisible(false)}
-          />
-
-          <View style={styles.calendarCard}>
-            <Calendar
-              style={styles.calendarWidget}
-              current={toCalendarDateStringFromDate(calendarMonth)}
-              onDayPress={(day) => applyCalendarDate(day.dateString)}
-              onMonthChange={(month) =>
-                setCalendarMonth(startOfMonth(new Date(month.year, month.month - 1, 1)))
-              }
-              markedDates={
-                selectedCalendarDate
-                  ? {
-                      [selectedCalendarDate]: {
-                        selected: true,
-                        selectedColor: '#F5C24B',
-                        selectedTextColor: '#FFFFFF',
-                      },
-                    }
-                  : undefined
-              }
-              theme={{
-                calendarBackground: '#FFFFFF',
-                textSectionTitleColor: '#8B909B',
-                selectedDayBackgroundColor: '#F5C24B',
-                selectedDayTextColor: '#FFFFFF',
-                todayTextColor: '#F29A2E',
-                dayTextColor: '#2D2F36',
-                textDisabledColor: '#D2D5DC',
-                arrowColor: '#2D2F36',
-                monthTextColor: '#2D2F36',
-                textMonthFontWeight: '700',
-                textMonthFontSize: 15,
-              }}
-            />
-
-            <View style={styles.calendarFooterRow}>
-              <Pressable style={styles.calendarActionButton} onPress={clearCalendarDate}>
-                <Text style={styles.calendarActionText}>초기화</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.calendarActionButton}
-                onPress={() => applyCalendarDate(toCalendarDateStringFromDate(new Date()))}
-              >
-                <Text style={styles.calendarActionText}>오늘</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <View style={styles.buttonSection}>
         <View
           pointerEvents="none"
@@ -954,10 +893,6 @@ function parseDateLabel(label: string) {
   return date;
 }
 
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
 function formatDateLabelFromCalendar(dateString: string) {
   const [year, month, day] = dateString.split('-').map((part) => Number(part));
   if (
@@ -970,15 +905,6 @@ function formatDateLabelFromCalendar(dateString: string) {
   }
 
   return `${month}/${day}/${String(year).slice(-2)}`;
-}
-
-function toCalendarDateString(label: string) {
-  const parsed = parseDateLabel(label);
-  if (!parsed) {
-    return '';
-  }
-
-  return toCalendarDateStringFromDate(parsed);
 }
 
 function toCalendarDateStringFromDate(date: Date) {
