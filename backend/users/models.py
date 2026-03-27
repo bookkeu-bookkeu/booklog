@@ -68,18 +68,3 @@ class User(AbstractUser, TimeStampedModel):
 
     def __str__(self):
         return self.email
-
-
-class UserProfile(TimeStampedModel):
-    user = models.OneToOneField(
-        "users.User",
-        on_delete=models.CASCADE,
-        related_name="profile",
-    )
-    profile_image_url = models.URLField(blank=True)
-    bio = models.TextField(blank=True)
-    birth_year = models.PositiveIntegerField(null=True, blank=True)
-    is_profile_public = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"{self.user.nickname} profile"

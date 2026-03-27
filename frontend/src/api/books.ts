@@ -17,7 +17,6 @@ export interface UserLibraryBook {
   finished_at: string | null;
   book_type: string | null;
   page_count: number | null;
-  rating: number | null;
   is_favorite: boolean;
   created_at: string;
   updated_at: string;

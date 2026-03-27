@@ -1,6 +1,5 @@
 # reading/models.py
 
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from common.models import TimeStampedModel
@@ -42,11 +41,6 @@ class UserBook(TimeStampedModel):
     finished_at = models.DateField(null=True, blank=True)
     book_type = models.CharField(max_length=30, null=True, blank=True)
     page_count = models.PositiveIntegerField(null=True, blank=True)
-    rating = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-    )
     is_favorite = models.BooleanField(default=False)
 
     class Meta:

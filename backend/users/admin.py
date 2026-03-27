@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import User, UserProfile
+from .models import User
 
 
 @admin.register(User)
@@ -51,18 +51,3 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
-
-
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "user",
-        "birth_year",
-        "is_profile_public",
-        "created_at",
-    )
-    list_filter = ("is_profile_public",)
-    search_fields = ("user__email", "user__nickname", "bio")
-    autocomplete_fields = ("user",)
-    ordering = ("id",)

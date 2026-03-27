@@ -19,7 +19,6 @@ class UserBookAdmin(admin.ModelAdmin):
         "shelf",
         "started_at",
         "finished_at",
-        "rating",
         "is_favorite",
         "created_at",
     )
