@@ -85,6 +85,11 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     nestedLibraryState?.routes?.[nestedLibraryState.index ?? 0]?.name;
   const shouldHideTabBar =
     focusedHomeRouteName === 'BookDetail' ||
+    focusedHomeRouteName === 'BookReview' ||
+    focusedHomeRouteName === 'BookReviewCreate' ||
+    focusedHomeRouteName === 'QuoteNote' ||
+    focusedHomeRouteName === 'QuoteNoteBookSelect' ||
+    focusedHomeRouteName === 'QuoteNoteCreate' ||
     focusedSearchRouteName === 'BookDetail' ||
     focusedSearchRouteName === 'BookReview' ||
     focusedSearchRouteName === 'BookReviewCreate' ||

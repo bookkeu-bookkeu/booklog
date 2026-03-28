@@ -3,11 +3,31 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Book } from './types';
 import HomeScreen from '../screens/home/HomeScreen';
 import BookDetailScreen from '../screens/search/BookDetailScreen';
+import BookReviewScreen from '../screens/review/BookReviewScreen';
+import ReviewCreateScreen from '../screens/review/ReviewCreateScreen';
+import QuoteNoteListScreen from '../screens/review/QuoteNoteListScreen';
+import QuoteNoteBookSelectScreen from '../screens/review/QuoteNoteBookSelectScreen';
+import QuoteNoteCreateScreen from '../screens/review/QuoteNoteCreateScreen';
 
 type HomeStackParamList = {
   HomeMain: undefined;
   BookDetail: {
     book: Book;
+  };
+  BookReview: {
+    book?: Book;
+  };
+  BookReviewCreate: {
+    book?: Book;
+  };
+  QuoteNote: {
+    book?: Book;
+  };
+  QuoteNoteBookSelect: {
+    book?: Book;
+  };
+  QuoteNoteCreate: {
+    book?: Book;
   };
 };
 
@@ -18,6 +38,11 @@ export default function HomeNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} />
+      <Stack.Screen name="BookReview" component={BookReviewScreen} />
+      <Stack.Screen name="BookReviewCreate" component={ReviewCreateScreen} />
+      <Stack.Screen name="QuoteNote" component={QuoteNoteListScreen} />
+      <Stack.Screen name="QuoteNoteBookSelect" component={QuoteNoteBookSelectScreen} />
+      <Stack.Screen name="QuoteNoteCreate" component={QuoteNoteCreateScreen} />
     </Stack.Navigator>
   );
 }
