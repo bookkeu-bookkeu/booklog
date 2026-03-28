@@ -1,5 +1,13 @@
-import React from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 type Props = {
   visible: boolean;
@@ -20,12 +28,48 @@ export default function InfoSheetModal({
   styles,
   onClose,
 }: Props) {
+  const [shouldRender, setShouldRender] = useState(visible);
+  const translateY = useRef(new Animated.Value(420)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setShouldRender(true);
+      translateY.setValue(420);
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    if (!shouldRender) {
+      return;
+    }
+
+    Animated.timing(translateY, {
+      toValue: 420,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShouldRender(false);
+      }
+    });
+  }, [shouldRender, translateY, visible]);
+
+  if (!shouldRender) {
+    return null;
+  }
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={shouldRender} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.sheetOverlay}>
         <Pressable style={styles.sheetBackdrop} onPress={onClose} />
 
-        <View style={styles.infoSheet}>
+        <Animated.View style={[styles.infoSheet, { transform: [{ translateY }] }]}>
           <Text style={styles.infoSheetTitle}>책 정보</Text>
 
           <View style={styles.infoSheetBox}>
@@ -56,7 +100,7 @@ export default function InfoSheetModal({
           <Pressable style={styles.sheetConfirmButton} onPress={onClose}>
             <Text style={styles.sheetConfirmButtonText}>확인</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

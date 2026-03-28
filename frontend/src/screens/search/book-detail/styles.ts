@@ -365,10 +365,11 @@ export const styles = StyleSheet.create({
   sheetOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   sheetBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20, 24, 32, 0.42)',
   },
   infoSheet: {
     height: '68%',
@@ -421,11 +422,12 @@ export const styles = StyleSheet.create({
   },
   recordSheetOverlay: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   recordSheetBackdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20, 24, 32, 0.42)',
   },
   recordSheetContainer: {
     paddingTop: 8,
