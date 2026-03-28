@@ -9,9 +9,14 @@ import QuoteNoteListScreen from '../screens/review/QuoteNoteListScreen';
 import QuoteNoteBookSelectScreen from '../screens/review/QuoteNoteBookSelectScreen';
 import QuoteNoteCreateScreen from '../screens/review/QuoteNoteCreateScreen';
 import { Book } from './types';
+import { ShelfTabKey } from '../screens/library/libraryTypes';
 
 type LibraryStackParamList = {
-  LibraryHome: undefined;
+  LibraryHome:
+    | {
+        initialTab?: ShelfTabKey;
+      }
+    | undefined;
   BookDetail: {
     book: Book;
   };

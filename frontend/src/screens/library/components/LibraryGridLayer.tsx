@@ -1,6 +1,6 @@
 import React from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
-import LibraryBookCard from './LibraryBookCard';
+import LibraryBookCard from '../../../components/LibraryBookCard';
 import { LibraryBook, ShelfTabKey } from '../libraryTypes';
 
 type Props = {

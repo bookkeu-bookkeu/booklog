@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import HomeScreen from '../screens/home/HomeScreen';
+import HomeNavigator from './HomeNavigator';
 import LibraryNavigator from './LibraryNavigator';
 import SearchNavigator from './SearchNavigator';
 
@@ -61,6 +61,17 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       : undefined;
   const focusedSearchRouteName =
     nestedSearchState?.routes?.[nestedSearchState.index ?? 0]?.name;
+  const nestedHomeState =
+    activeRoute.name === 'HomeTab'
+      ? (activeRoute.state as
+          | {
+              index?: number;
+              routes?: Array<{ name?: string }>;
+            }
+          | undefined)
+      : undefined;
+  const focusedHomeRouteName =
+    nestedHomeState?.routes?.[nestedHomeState.index ?? 0]?.name;
   const nestedLibraryState =
     activeRoute.name === 'LibraryTab'
       ? (activeRoute.state as
@@ -73,6 +84,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const focusedLibraryRouteName =
     nestedLibraryState?.routes?.[nestedLibraryState.index ?? 0]?.name;
   const shouldHideTabBar =
+    focusedHomeRouteName === 'BookDetail' ||
     focusedSearchRouteName === 'BookDetail' ||
     focusedSearchRouteName === 'BookReview' ||
     focusedSearchRouteName === 'BookReviewCreate' ||
@@ -302,7 +314,7 @@ export default function MainTabNavigator() {
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <CustomTabBar {...props} />}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} />
+      <Tab.Screen name="HomeTab" component={HomeNavigator} />
       <Tab.Screen name="SearchTab" component={SearchNavigator} />
       <Tab.Screen name="LibraryTab" component={LibraryNavigator} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} />

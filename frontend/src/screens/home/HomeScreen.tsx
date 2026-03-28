@@ -1,32 +1,453 @@
-import { StyleSheet, Text, View } from 'react-native';
-import ScreenContainer from '../../components/ScreenContainer';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { getMe } from '../../api/auth';
+import { getMyLibraryBooks } from '../../api/books';
+import { getBookReviews } from '../../api/reviews';
+import { getCurrentUserRbti } from '../../api/rbti';
+import LibraryBookCard, { LibraryBookCardItem } from '../../components/LibraryBookCard';
+import { Book } from '../../navigation/types';
+
+type RbtiAxis = {
+  id: string;
+  label: string;
+  valueText: string;
+  fillPercent: number; // 0 ~ 100
+};
+
+type HomeBookCardItem = LibraryBookCardItem & {
+  id: string;
+  detailBook: Book;
+};
+
+const rbtiAxes: RbtiAxis[] = [
+  { id: '1', label: '탐구형', valueText: '+10%', fillPercent: 74 },
+  { id: '2', label: '공감형', valueText: '-7%', fillPercent: 56 },
+  { id: '3', label: '문장형', valueText: '+2%', fillPercent: 66 },
+];
+
+function mapLibraryBookToHomeItem(item: {
+  id: number;
+  book_id: number;
+  book_title: string;
+  book_publisher: string;
+  book_authors: string[];
+  book_thumbnail_url: string;
+  book_isbn13: string;
+}): HomeBookCardItem {
+  const title = item.book_title?.trim() || '제목 없음';
+  const publisher = item.book_publisher?.trim() || '출판사';
+  const thumbnail = item.book_thumbnail_url?.trim() || '';
+  const isbn13 = item.book_isbn13?.trim() || '';
+
+  return {
+    id: String(item.id),
+    title,
+    author: item.book_authors?.length ? item.book_authors.join(', ') : '저자 미상',
+    publisher,
+    thumbnail: thumbnail || undefined,
+    detailBook: {
+      source: 'library',
+      external_api_id: String(item.book_id),
+      title,
+      contents: '',
+      url: '',
+      isbn: isbn13,
+      isbn13,
+      authors: item.book_authors ?? [],
+      publisher,
+      published_at: '',
+      thumbnail,
+      is_in_library: true,
+    },
+  };
+}
 
 export default function HomeScreen() {
+  const navigation = useNavigation<any>();
+  const [readingBooks, setReadingBooks] = useState<HomeBookCardItem[]>([]);
+  const [waitingReviewBooks, setWaitingReviewBooks] = useState<HomeBookCardItem[]>([]);
+  const [isReadingBooksLoading, setIsReadingBooksLoading] = useState(true);
+  const [isWaitingReviewBooksLoading, setIsWaitingReviewBooksLoading] = useState(true);
+  const [userRbtiName, setUserRbtiName] = useState<string>('');
+  const [userNickname, setUserNickname] = useState<string>('');
+
+  const fetchHomeBooks = useCallback(async () => {
+    try {
+      setIsReadingBooksLoading(true);
+      setIsWaitingReviewBooksLoading(true);
+
+      const [readingResponse, doneResponse] = await Promise.all([
+        getMyLibraryBooks('READING'),
+        getMyLibraryBooks('DONE'),
+      ]);
+
+      setReadingBooks(readingResponse.map(mapLibraryBookToHomeItem));
+
+      const reviewStates = await Promise.all(
+        doneResponse.map(async (item) => {
+          try {
+            const myReviews = await getBookReviews(item.book_id, { mine: true });
+            return {
+              item,
+              hasMyReview: myReviews.length > 0,
+            };
+          } catch (error) {
+            return {
+              item,
+              hasMyReview: false,
+            };
+          }
+        }),
+      );
+
+      const waitingItems = reviewStates
+        .filter((entry) => !entry.hasMyReview)
+        .map((entry) => mapLibraryBookToHomeItem(entry.item));
+
+      setWaitingReviewBooks(waitingItems);
+
+      // Fetch user data
+      try {
+        const userResponse = await getMe();
+        setUserNickname(userResponse.nickname);
+      } catch (error) {
+        // 사용자 정보 로드 실패 시 기본값 사용
+        setUserNickname('');
+      }
+
+      // Fetch user RBTI data
+      try {
+        const rbtiResponse = await getCurrentUserRbti();
+        if (rbtiResponse.has_rbti && rbtiResponse.current_rbti?.rbti_name) {
+          setUserRbtiName(rbtiResponse.current_rbti.rbti_name);
+        }
+      } catch (error) {
+        // RBTI 로드 실패 시 기본값 사용
+        setUserRbtiName('');
+      }
+    } catch (error) {
+      setReadingBooks([]);
+      setWaitingReviewBooks([]);
+    } finally {
+      setIsReadingBooksLoading(false);
+      setIsWaitingReviewBooksLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchHomeBooks();
+    }, [fetchHomeBooks]),
+  );
+
   return (
-    <ScreenContainer>
-      <View style={styles.card}>
-        <Text style={styles.title}>북로그 홈</Text>
-        <Text style={styles.description}>현재 RBTI, 추천 도서, 독서 현황이 들어갈 자리</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <ProfileHeader rbtiName={userRbtiName} nickname={userNickname} />
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, styles.rbtiSectionTitle]}>내 최근 리뷰로 보정된 RBTI</Text>
+
+          <View style={styles.rbtiBox}>
+            {rbtiAxes.map((axis) => (
+              <RbtiBar key={axis.id} item={axis} />
+            ))}
+          </View>
+        </View>
+
+        {isReadingBooksLoading ? (
+          <View style={styles.readingLoadingWrap}>
+            <ActivityIndicator size="small" color="#F5C24B" />
+          </View>
+        ) : readingBooks.length > 0 ? (
+          <HorizontalBookSection
+            title="읽고 있는 책"
+            books={readingBooks}
+            onPressSeeMore={() =>
+              navigation.navigate('LibraryTab', {
+                screen: 'LibraryHome',
+                params: { initialTab: 'reading' },
+              })
+            }
+            onPressBook={(book) => navigation.navigate('BookDetail', { book: book.detailBook })}
+          />
+        ) : null}
+
+        {isWaitingReviewBooksLoading ? (
+          <View style={styles.readingLoadingWrap}>
+            <ActivityIndicator size="small" color="#F5C24B" />
+          </View>
+        ) : waitingReviewBooks.length > 0 ? (
+          <HorizontalBookSection
+            title="리뷰를 기다리는 책"
+            books={waitingReviewBooks}
+            onPressSeeMore={() =>
+              navigation.navigate('LibraryTab', {
+                screen: 'LibraryHome',
+                params: { initialTab: 'done' },
+              })
+            }
+            onPressBook={(book) => navigation.navigate('BookDetail', { book: book.detailBook })}
+          />
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function ProfileHeader({ rbtiName, nickname }: { rbtiName?: string; nickname?: string }) {
+  return (
+    <View style={styles.profileHeader}>
+      <View style={styles.profileLeft}>
+        <View style={styles.profileAvatar}>
+          <Ionicons name="person" size={40} color="#FFD7A2" />
+        </View>
+
+        <View style={styles.profileTextWrap}>
+          <Text style={styles.profileRbti} numberOfLines={1}>
+            {rbtiName || '(내 RBTI 유형 이름)'}
+          </Text>
+          <Text style={styles.profileNickname} numberOfLines={1}>
+            {nickname || '닉네임'}
+          </Text>
+        </View>
       </View>
-    </ScreenContainer>
+
+      <Pressable style={styles.bellButton} hitSlop={10}>
+        <Ionicons name="notifications" size={22} color="#2F3238" />
+        <View style={styles.bellDot} />
+      </Pressable>
+    </View>
+  );
+}
+
+function RbtiBar({ item }: { item: RbtiAxis }) {
+  return (
+    <View style={styles.rbtiRow}>
+      <View style={styles.rbtiTrack}>
+        <View style={styles.rbtiLabelBox}>
+          <Text style={styles.rbtiLabel}>{item.label}</Text>
+        </View>
+
+        <View style={styles.rbtiProgressTrack}>
+          <View
+            style={[
+              styles.rbtiFill,
+              {
+                width: `${item.fillPercent}%`,
+              },
+            ]}
+          />
+          <Text style={styles.rbtiValue}>{item.valueText}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function HorizontalBookSection({
+  title,
+  books,
+  onPressSeeMore,
+  onPressBook,
+}: {
+  title: string;
+  books: HomeBookCardItem[];
+  onPressSeeMore: () => void;
+  onPressBook?: (book: HomeBookCardItem) => void;
+}) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Pressable onPress={onPressSeeMore} hitSlop={10}>
+          <Text style={styles.seeMoreText}>See more</Text>
+        </Pressable>
+      </View>
+
+      <FlatList
+        data={books}
+        horizontal
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => (
+          <View style={[styles.bookCardWrap, index === books.length - 1 && styles.lastCardWrap]}>
+            <HomeBookCard item={item} onPress={onPressBook ? () => onPressBook(item) : undefined} />
+          </View>
+        )}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.horizontalListContent}
+      />
+    </View>
+  );
+}
+
+function HomeBookCard({ item, onPress }: { item: HomeBookCardItem; onPress?: () => void }) {
+  return (
+    <LibraryBookCard book={item} onPress={onPress} />
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E2DD',
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
+  contentContainer: {
+    paddingTop: 14,
+    paddingBottom: 40,
   },
-  description: {
+
+  profileHeader: {
+    paddingHorizontal: 26,
+    paddingVertical: 12,
+    marginBottom: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  profileLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 16,
+  },
+  profileAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF6EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  profileTextWrap: {
+    flex: 1,
+  },
+  profileRbti: {
     fontSize: 15,
-    color: '#6D655D',
+    color: '#5F636B',
+    marginBottom: 2,
+  },
+  profileNickname: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#202329',
+  },
+  bellButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 2,
+    right: 1,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F5C24B',
+  },
+
+  section: {
+    marginBottom: 28,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2025',
+  },
+  sectionHeaderRow: {
+    paddingHorizontal: 26,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  seeMoreText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F19B25',
+  },
+
+  rbtiBox: {
+    paddingHorizontal: 26,
+    marginTop: 12,
+  },
+  rbtiSectionTitle: {
+    paddingHorizontal: 26,
+  },
+  rbtiRow: {
+    marginBottom: 10,
+  },
+  rbtiTrack: {
+    height: 28,
+    borderRadius: 14,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  rbtiLabelBox: {
+    width: 96,
+    backgroundColor: '#ffd06c',
+    justifyContent: 'center',
+    paddingLeft: 14,
+  },
+  rbtiProgressTrack: {
+    flex: 1,
+    backgroundColor: '#fff0db',
+    justifyContent: 'center',
+  },
+  rbtiFill: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: '#ffd06c',
+    borderTopRightRadius: 14,
+    borderBottomRightRadius: 14,
+  },
+  rbtiLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  rbtiValue: {
+    position: 'absolute',
+    right: 14,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E67F1E',
+  },
+
+  horizontalListContent: {
+    paddingLeft: 26,
+    paddingRight: 10,
+  },
+  readingLoadingWrap: {
+    marginBottom: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  bookCardWrap: {
+    width: 186,
+    marginRight: 14,
+  },
+  lastCardWrap: {
+    marginRight: 26,
   },
 });

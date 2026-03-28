@@ -1,10 +1,16 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { LibraryBook } from '../libraryTypes';
+
+export type LibraryBookCardItem = {
+  title: string;
+  author: string;
+  publisher: string;
+  thumbnail?: string | null;
+};
 
 type Props = {
-  book: LibraryBook;
+  book: LibraryBookCardItem;
   onPress?: () => void;
 };
 

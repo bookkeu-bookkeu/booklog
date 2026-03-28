@@ -12,6 +12,17 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  nickname: string;
+  status: string;
+  is_active: boolean;
+  is_staff: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const signup = async (payload: SignupPayload) => {
   const { data } = await api.post('/users/signup/', payload);
   return data;
@@ -22,7 +33,7 @@ export const login = async (payload: LoginPayload) => {
   return data;
 };
 
-export const getMe = async () => {
-  const { data } = await api.get('/users/me/');
+export const getMe = async (): Promise<User> => {
+  const { data } = await api.get<User>('/users/me/');
   return data;
 };

@@ -330,11 +330,15 @@ export default function BookDetailScreen({ navigation, route }: Props) {
 
     try {
       setIsAddLoading(true);
+      const todayDateString = toCalendarDateStringFromDate(new Date());
       const updatedBook = await updateLibraryBook(userLibraryBook.id, {
         shelf_code: 'READING',
+        started_at: todayDateString,
         finished_at: null,
       });
       setUserLibraryBook(updatedBook);
+      const todayLabel = formatDateLabelFromCalendar(todayDateString);
+      setStartedDate(todayLabel);
       setFinishedDate('');
       setRecordActionSheetVisible(false);
     } catch (error) {
@@ -351,8 +355,14 @@ export default function BookDetailScreen({ navigation, route }: Props) {
 
     try {
       setIsAddLoading(true);
-      const updatedBook = await updateLibraryBookShelf(userLibraryBook.id, 'DONE');
+      const todayDateString = toCalendarDateStringFromDate(new Date());
+      const updatedBook = await updateLibraryBook(userLibraryBook.id, {
+        shelf_code: 'DONE',
+        finished_at: todayDateString,
+      });
       setUserLibraryBook(updatedBook);
+      const todayLabel = formatDateLabelFromCalendar(todayDateString);
+      setFinishedDate(todayLabel);
       setRecordActionSheetVisible(false);
     } catch (error) {
       console.log('완료 상태 변경 실패', error);

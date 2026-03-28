@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getMyLibraryBooks } from '../../api/books';
 import AnimatedContentSwitcher from './components/AnimatedContentSwitcher';
@@ -31,6 +31,7 @@ import {
 
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [activeTab, setActiveTab] = useState<ShelfTabKey>('reading');
   const [displayedTab, setDisplayedTab] = useState<ShelfTabKey>('reading');
   const [transition, setTransition] = useState<TabTransitionState | null>(null);
@@ -88,6 +89,31 @@ export default function LibraryScreen() {
     useCallback(() => {
       void fetchLibraryBooks();
     }, [fetchLibraryBooks]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const requestedTab = route.params?.initialTab as ShelfTabKey | undefined;
+      if (!requestedTab) return;
+
+      if (requestedTab !== activeTab || requestedTab !== displayedTab) {
+        setActiveTab(requestedTab);
+        setDisplayedTab(requestedTab);
+        setTransition(null);
+        outgoingTranslateX.setValue(0);
+        incomingTranslateX.setValue(0);
+        isAnimatingRef.current = false;
+      }
+
+      navigation.setParams({ initialTab: undefined });
+    }, [
+      route.params?.initialTab,
+      activeTab,
+      displayedTab,
+      navigation,
+      outgoingTranslateX,
+      incomingTranslateX,
+    ]),
   );
 
   const handleTabChange = (nextTab: ShelfTabKey) => {
