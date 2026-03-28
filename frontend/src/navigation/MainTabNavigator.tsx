@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -15,7 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import CalendarScreen from '../screens/calendar/CalendarScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import LibraryNavigator from './LibraryNavigator';
 import SearchNavigator from './SearchNavigator';
@@ -27,11 +28,12 @@ type TabItemProps = {
   focused: boolean;
   onPress: () => void;
   icon: React.ReactNode;
+  style?: ViewStyle;
 };
 
-function TabItem({ label, focused, onPress, icon }: TabItemProps) {
+function TabItem({ label, focused, onPress, icon, style }: TabItemProps) {
   return (
-    <Pressable style={styles.tabItem} onPress={onPress}>
+    <Pressable style={[styles.tabItem, style]} onPress={onPress}>
       <View style={styles.iconWrap}>{icon}</View>
       <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>
         {label}
@@ -85,9 +87,9 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     focusedLibraryRouteName === 'QuoteNoteCreate';
 
   const homeFocused = activeIndex === 0;
-  const calendarFocused = activeIndex === 1;
-  const searchFocused = activeIndex === 2;
-  const libraryFocused = activeIndex === 3;
+  const searchFocused = activeIndex === 1;
+  const libraryFocused = activeIndex === 2;
+  const profileFocused = activeIndex === 3;
 
   const baseHeight = 70;
   const tabBarHeight = baseHeight + insets.bottom;
@@ -263,10 +265,11 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               icon={<Ionicons name={homeFocused ? 'home' : 'home-outline'} size={24} color={homeFocused ? '#FEC54B' : '#C9C8D1'} />}
             />
             <TabItem
-              label="달력"
-              focused={calendarFocused}
+              label="검색"
+              focused={searchFocused}
               onPress={() => handleTabPress(1)}
-              icon={<Ionicons name={calendarFocused ? 'calendar' : 'calendar-outline'} size={24} color={calendarFocused ? '#FEC54B' : '#C9C8D1'} />}
+              style={styles.searchTabNudge}
+              icon={<Ionicons name={searchFocused ? 'book' : 'book-outline'} size={24} color={searchFocused ? '#FEC54B' : '#C9C8D1'} />}
             />
           </View>
 
@@ -274,16 +277,17 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
           <View style={styles.sideTabs}>
             <TabItem
-              label="검색"
-              focused={searchFocused}
-              onPress={() => handleTabPress(2)}
-              icon={<Ionicons name={searchFocused ? 'document-text' : 'document-text-outline'} size={24} color={searchFocused ? '#FEC54B' : '#C9C8D1'} />}
-            />
-            <TabItem
               label="내서재"
               focused={libraryFocused}
+              onPress={() => handleTabPress(2)}
+              style={styles.libraryTabNudge}
+              icon={<Ionicons name={libraryFocused ? 'library' : 'library-outline'} size={24} color={libraryFocused ? '#FEC54B' : '#C9C8D1'} />}
+            />
+            <TabItem
+              label="프로필"
+              focused={profileFocused}
               onPress={() => handleTabPress(3)}
-              icon={<Ionicons name={libraryFocused ? 'people' : 'people-outline'} size={24} color={libraryFocused ? '#FEC54B' : '#C9C8D1'} />}
+              icon={<Ionicons name={profileFocused ? 'person' : 'person-outline'} size={24} color={profileFocused ? '#FEC54B' : '#C9C8D1'} />}
             />
           </View>
         </View>
@@ -299,9 +303,9 @@ export default function MainTabNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
     >
       <Tab.Screen name="HomeTab" component={HomeScreen} />
-      <Tab.Screen name="CalendarTab" component={CalendarScreen} />
       <Tab.Screen name="SearchTab" component={SearchNavigator} />
       <Tab.Screen name="LibraryTab" component={LibraryNavigator} />
+      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -384,6 +388,12 @@ const styles = StyleSheet.create({
     width: 56,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  searchTabNudge: {
+    transform: [{ translateX: -10 }],
+  },
+  libraryTabNudge: {
+    transform: [{ translateX: 10 }],
   },
   iconWrap: {
     height: 28,

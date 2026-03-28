@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-export default function CalendarScreen() {
+export default function ProfileScreen() {
 	return <View style={styles.container} />;
 }
 
