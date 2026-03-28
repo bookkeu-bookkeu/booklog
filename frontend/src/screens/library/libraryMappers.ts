@@ -2,7 +2,7 @@ import { UserLibraryBook } from '../../api/books';
 import { LibraryBook, ShelfTabKey } from './libraryTypes';
 
 export function mapShelfCodeToTab(shelfCode: UserLibraryBook['shelf_code']): ShelfTabKey {
-  if (shelfCode === 'WANT') return 'wish';
+  if (shelfCode === 'WANT') return 'want';
   if (shelfCode === 'READING') return 'reading';
   return 'done';
 }

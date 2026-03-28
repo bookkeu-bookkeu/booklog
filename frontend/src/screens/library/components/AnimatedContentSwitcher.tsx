@@ -8,7 +8,7 @@ type Props = {
 };
 
 const TABS: { key: ShelfTabKey; label: string }[] = [
-  { key: 'wish', label: '읽고 싶은' },
+  { key: 'want', label: '읽고 싶은' },
   { key: 'reading', label: '읽는 중' },
   { key: 'done', label: '완료' },
 ];

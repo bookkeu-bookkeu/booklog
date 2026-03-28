@@ -66,7 +66,7 @@ export default function LibraryScreen() {
       const response = await getMyLibraryBooks();
 
       const grouped: Record<ShelfTabKey, LibraryBook[]> = {
-        wish: [],
+        want: [],
         reading: [],
         done: [],
       };
@@ -194,10 +194,19 @@ export default function LibraryScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>아직 책이 없어요</Text>
+      <View style={styles.emptyIconBox}>
+        <Ionicons name="add" size={60} color="#FFD7A2" />
+      </View>
+      <Text style={styles.emptyTitle}>아직 추가한 책이 없어요.</Text>
       <Text style={styles.emptyDescription}>
-        이 상태의 책이 추가되면 여기에 표시됩니다.
+        읽고 싶은 책을 검색해서 추가해보세요!
       </Text>
+      <Pressable
+        style={styles.addBooksButton}
+        onPress={() => navigation.navigate('SearchTab')}
+      >
+        <Text style={styles.addBooksButtonText}>Add books</Text>
+      </Pressable>
     </View>
   );
 
@@ -390,8 +399,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   emptyContainer: {
-    paddingTop: 40,
+    flex: 1,
+    paddingTop: 80,
     alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  emptyIconBox: {
+    width: 120,
+    height: 120,
+    borderRadius: 24,
+    backgroundColor: '#FFF6EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
   },
   emptyTitle: {
     fontSize: 18,
@@ -402,6 +422,20 @@ const styles = StyleSheet.create({
   emptyDescription: {
     fontSize: 13,
     color: '#8B909B',
+    marginBottom: 28,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  addBooksButton: {
+    paddingHorizontal: 25,
+    paddingVertical: 15,
+    backgroundColor: '#FEC54B',
+    borderRadius: 20,
+  },
+  addBooksButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   loadingContainer: {
     flex: 1,

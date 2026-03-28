@@ -1,6 +1,6 @@
 import { Book } from '../../navigation/types';
 
-export type ShelfTabKey = 'wish' | 'reading' | 'done';
+export type ShelfTabKey = 'want' | 'reading' | 'done';
 
 export type TabTransitionState = {
   from: ShelfTabKey;
@@ -17,12 +17,12 @@ export type LibraryBook = {
   detailBook: Book;
 };
 
-export const TAB_ORDER: ShelfTabKey[] = ['wish', 'reading', 'done'];
+export const TAB_ORDER: ShelfTabKey[] = ['want', 'reading', 'done'];
 
 export const ESTIMATED_GRID_ROW_HEIGHT = 248;
 
 export const INITIAL_BOOKS_BY_TAB: Record<ShelfTabKey, LibraryBook[]> = {
-  wish: [],
+  want: [],
   reading: [],
   done: [],
 };
