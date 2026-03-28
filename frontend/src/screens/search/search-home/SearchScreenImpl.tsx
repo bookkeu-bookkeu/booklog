@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   recommendTitle: {
-    fontSize: 20,
+    fontSize: 18,
     lineHeight: 28,
     fontWeight: '700',
     color: '#2D2F36',

@@ -56,14 +56,10 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   coverImage: {
-    width: 132,
-    height: 174,
     borderRadius: 0,
     backgroundColor: '#FFD7A2',
   },
   coverPlaceholder: {
-    width: 132,
-    height: 174,
     backgroundColor: '#FFECD2',
     alignItems: 'center',
     justifyContent: 'center',

@@ -63,6 +63,20 @@ export default function SearchBar({
           returnKeyType="search"
           style={styles.input}
         />
+
+        {value && (
+          <Pressable
+            style={styles.clearButton}
+            onPress={() => onChangeText?.('')}
+            hitSlop={8}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color="#8C8F98"
+            />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -82,6 +96,10 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 10,
+  },
+  clearButton: {
+    marginLeft: 8,
+    padding: 4,
   },
   input: {
     flex: 1,

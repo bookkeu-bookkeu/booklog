@@ -185,6 +185,8 @@ export default function HomeScreen() {
             }
             onPressBook={(book) => navigation.navigate('BookDetail', { book: book.detailBook })}
           />
+        ) : !isWaitingReviewBooksLoading && waitingReviewBooks.length === 0 ? (
+          <ReadingBooksEmptySection onPressAddBooks={() => navigation.navigate('SearchTab')} />
         ) : null}
 
         {isWaitingReviewBooksLoading ? (
@@ -301,6 +303,25 @@ function HomeBookCard({ item, onPress }: { item: HomeBookCardItem; onPress?: () 
   );
 }
 
+function ReadingBooksEmptySection({ onPressAddBooks }: { onPressAddBooks: () => void }) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>읽고 있는 책</Text>
+      </View>
+
+      <View style={styles.readingEmptyBox}>
+        <Text style={styles.readingEmptyTitle}>읽고 있는 책이 없어요.</Text>
+        <Text style={styles.readingEmptyDescription}>읽고 있는 책을 등록해 주세요!</Text>
+
+        <Pressable style={styles.addBooksButton} onPress={onPressAddBooks}>
+          <Text style={styles.addBooksButtonText}>Add books</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -308,7 +329,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingTop: 14,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
 
   profileHeader: {
@@ -402,7 +423,7 @@ const styles = StyleSheet.create({
   },
   rbtiLabelBox: {
     width: 96,
-    backgroundColor: '#ffd06c',
+    backgroundColor: '#ffce65',
     justifyContent: 'center',
     paddingLeft: 14,
   },
@@ -416,7 +437,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: '#ffd06c',
+    backgroundColor: '#ffce65',
     borderTopRightRadius: 14,
     borderBottomRightRadius: 14,
   },
@@ -442,6 +463,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+  },
+  readingEmptyBox: {
+    marginHorizontal: 26,
+    borderRadius: 16,
+    backgroundColor: '#fdf6ec',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+  },
+  readingEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2025',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  readingEmptyDescription: {
+    fontSize: 13,
+    color: '#8B909B',
+    marginBottom: 28,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  addBooksButton: {
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    backgroundColor: '#FEC54B',
+    borderRadius: 20,
+  },
+  addBooksButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   bookCardWrap: {
     width: 186,

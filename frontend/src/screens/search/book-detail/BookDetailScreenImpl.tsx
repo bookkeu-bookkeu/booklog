@@ -50,6 +50,26 @@ type SearchStackWithBookDetail = SearchStackParamList & {
 
 type Props = NativeStackScreenProps<SearchStackWithBookDetail, 'BookDetail'>;
 
+const DEFAULT_COVER_SIZE = { width: 132, height: 174 };
+const MAX_COVER_SIZE = { width: 220, height: 320 };
+
+function getScaledCoverSize(width: number, height: number) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return DEFAULT_COVER_SIZE;
+  }
+
+  const scale = Math.min(
+    1,
+    MAX_COVER_SIZE.width / width,
+    MAX_COVER_SIZE.height / height
+  );
+
+  return {
+    width: Math.round(width * scale),
+    height: Math.round(height * scale),
+  };
+}
+
 export default function BookDetailScreen({ navigation, route }: Props) {
   const book = route.params.book;
   const bookIsbn13 = getBookIsbn13(book);
@@ -66,11 +86,11 @@ export default function BookDetailScreen({ navigation, route }: Props) {
   const [startedDate, setStartedDate] = useState<string>('');
   const [finishedDate, setFinishedDate] = useState<string>('');
   const [bookType, setBookType] = useState<string>('종이책');
-  const [bookLength, setBookLength] = useState<string>('');
   const [importedBookId, setImportedBookId] = useState<number | null>(null);
   const [quoteNotes, setQuoteNotes] = useState<QuoteNoteItem[]>([]);
   const [myReview, setMyReview] = useState<ReviewItem | null>(null);
   const [draftRating, setDraftRating] = useState(0);
+  const [coverSize, setCoverSize] = useState(DEFAULT_COVER_SIZE);
 
   const thumbnail =
     typeof (book as any).thumbnail_url === 'string' && (book as any).thumbnail_url.trim()
@@ -99,6 +119,23 @@ export default function BookDetailScreen({ navigation, route }: Props) {
 
     return '책 소개 정보가 아직 없습니다.';
   }, [book, bookDescriptionText]);
+
+  useEffect(() => {
+    if (!thumbnail) {
+      setCoverSize(DEFAULT_COVER_SIZE);
+      return;
+    }
+
+    Image.getSize(
+      thumbnail,
+      (width, height) => {
+        setCoverSize(getScaledCoverSize(width, height));
+      },
+      () => {
+        setCoverSize(DEFAULT_COVER_SIZE);
+      }
+    );
+  }, [thumbnail]);
 
   const findExistingLibraryBook = async () => {
     if (!bookIsbn13) {
@@ -231,41 +268,12 @@ export default function BookDetailScreen({ navigation, route }: Props) {
     }
 
     if (typeof userLibraryBook?.page_count === 'number') {
-      setBookLength(String(userLibraryBook.page_count));
     } else {
-      const initialLength = getBookLengthLabel(book);
-      if (initialLength) {
-        setBookLength(initialLength);
-      } else {
-        setBookLength('');
-      }
+      // 남은 초기화 로직 없음
     }
   }, [book, userLibraryBook]);
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const isReadingOrDoneStatus =
-      userLibraryBook?.shelf_code === 'READING' || userLibraryBook?.shelf_code === 'DONE';
-
-    if (isReadingOrDoneStatus && userLibraryBook) {
-      const normalized = bookLength.trim();
-      const nextPageCount = normalized ? Number(normalized) : null;
-      const currentPageCount = userLibraryBook.page_count ?? null;
-
-      if (nextPageCount !== currentPageCount) {
-        timer = setTimeout(() => {
-          void persistRecordFields({ page_count: nextPageCount });
-        }, 500);
-      }
-    }
-
-    return () => {
-      if (timer !== null) {
-        clearTimeout(timer);
-      }
-    };
-  }, [bookLength, userLibraryBook]);
 
   const persistRecordFields = async (payload: UpdateLibraryBookPayload) => {
     if (!userLibraryBook) {
@@ -452,15 +460,28 @@ export default function BookDetailScreen({ navigation, route }: Props) {
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.coverCard}>
-            <View style={styles.coverImageWrap}>
+            <View
+              style={[
+                styles.coverImageWrap,
+                { width: coverSize.width, height: coverSize.height },
+              ]}
+            >
               {thumbnail ? (
                 <Image
                   source={{ uri: thumbnail }}
-                  style={styles.coverImage}
+                  style={[
+                    styles.coverImage,
+                    { width: coverSize.width, height: coverSize.height },
+                  ]}
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.coverPlaceholder}>
+                <View
+                  style={[
+                    styles.coverPlaceholder,
+                    { width: coverSize.width, height: coverSize.height },
+                  ]}
+                >
                   <Ionicons name="image-outline" size={34} color="#F3C57D" />
                 </View>
               )}
@@ -541,23 +562,6 @@ export default function BookDetailScreen({ navigation, route }: Props) {
                       <Ionicons name="chevron-down" size={14} color="#434850" />
                     </View>
                   </Pressable>
-                </View>
-
-                <View style={styles.recordFieldRow}>
-                  <Text style={styles.recordFieldLabel}>길이</Text>
-                  <View style={styles.recordFieldValueBox}>
-                    <View style={styles.recordLengthInputWrap}>
-                      <TextInput
-                        style={styles.recordLengthInput}
-                        value={bookLength}
-                        onChangeText={(text) => setBookLength(text.replace(/[^0-9]/g, ''))}
-                        placeholder="숫자"
-                        keyboardType="number-pad"
-                        maxLength={5}
-                      />
-                      <Text style={styles.recordLengthSuffix}>쪽</Text>
-                    </View>
-                  </View>
                 </View>
               </View>
             ) : (
@@ -861,25 +865,6 @@ function formatDateLabel(date?: string | null) {
   const year = String(parsed.getFullYear()).slice(-2);
 
   return `${month}/${day}/${year}`;
-}
-
-function getBookLengthLabel(book: any) {
-  const candidates = [
-    book?.itemPage,
-    book?.pages,
-    book?.page,
-    book?.page_count,
-    book?.item_page,
-  ];
-
-  for (const value of candidates) {
-    const page = Number(value);
-    if (Number.isFinite(page) && page > 0) {
-      return String(Math.floor(page));
-    }
-  }
-
-  return '';
 }
 
 function parseDateLabel(label: string) {
