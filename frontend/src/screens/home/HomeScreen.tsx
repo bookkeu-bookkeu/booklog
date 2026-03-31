@@ -15,6 +15,7 @@ import { getMe } from '../../api/auth';
 import { getMyLibraryBooks } from '../../api/books';
 import { getBookReviews } from '../../api/reviews';
 import { getCurrentUserRbti } from '../../api/rbti';
+import UserProfileHeader, { userProfileHeaderStyles } from '../../components/UserProfileHeader';
 import LibraryBookCard, { LibraryBookCardItem } from '../../components/LibraryBookCard';
 import { Book } from '../../navigation/types';
 
@@ -157,7 +158,16 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        <ProfileHeader rbtiName={userRbtiName} nickname={userNickname} />
+        <UserProfileHeader
+          rbtiName={userRbtiName}
+          nickname={userNickname}
+          rightAccessory={(
+            <Pressable style={userProfileHeaderStyles.bellButton} hitSlop={10}>
+              <Ionicons name="notifications" size={22} color="#2F3238" />
+              <View style={userProfileHeaderStyles.bellDot} />
+            </Pressable>
+          )}
+        />
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, styles.rbtiSectionTitle]}>내 최근 리뷰로 보정된 RBTI</Text>
@@ -208,32 +218,6 @@ export default function HomeScreen() {
         ) : null}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function ProfileHeader({ rbtiName, nickname }: { rbtiName?: string; nickname?: string }) {
-  return (
-    <View style={styles.profileHeader}>
-      <View style={styles.profileLeft}>
-        <View style={styles.profileAvatar}>
-          <Ionicons name="person" size={40} color="#FFD7A2" />
-        </View>
-
-        <View style={styles.profileTextWrap}>
-          <Text style={styles.profileRbti} numberOfLines={1}>
-            {rbtiName || '(내 RBTI 유형 이름)'}
-          </Text>
-          <Text style={styles.profileNickname} numberOfLines={1}>
-            {nickname || '닉네임'}
-          </Text>
-        </View>
-      </View>
-
-      <Pressable style={styles.bellButton} hitSlop={10}>
-        <Ionicons name="notifications" size={22} color="#2F3238" />
-        <View style={styles.bellDot} />
-      </Pressable>
-    </View>
   );
 }
 
@@ -330,58 +314,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingTop: 14,
     paddingBottom: 120,
-  },
-
-  profileHeader: {
-    paddingHorizontal: 26,
-    paddingVertical: 12,
-    marginBottom: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  profileLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 16,
-  },
-  profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF6EA',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  profileTextWrap: {
-    flex: 1,
-  },
-  profileRbti: {
-    fontSize: 15,
-    color: '#5F636B',
-    marginBottom: 2,
-  },
-  profileNickname: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#202329',
-  },
-  bellButton: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellDot: {
-    position: 'absolute',
-    top: 2,
-    right: 1,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F5C24B',
   },
 
   section: {

@@ -1,66 +1,756 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import ScreenContainer from '../../components/ScreenContainer';
-import { useAuthStore } from '../../store/useAuthStore';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import Svg, { Circle, G } from 'react-native-svg';
+import type { ProfileStackParamList } from '../../navigation/ProfileNavigator';
+import { getMe } from '../../api/auth';
+import { getCurrentUserRbti } from '../../api/rbti';
+import { getMyLibraryBooks, type UserLibraryBook } from '../../api/books';
+import UserProfileHeader, { userProfileHeaderStyles } from '../../components/UserProfileHeader';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+type MenuItem = {
+  id: string;
+  label: string;
+  icon: string;
+};
+
+type CalendarDay = {
+  day: number | null;
+  coverUrl?: string;
+};
+
+type StatItem = {
+  label: string;
+  percent: string;
+  value: number;
+  fill: string;
+  textColor: string;
+};
+
+const MENU_ITEMS: MenuItem[] = [
+  { id: 'rbti-retest', label: 'RBTI\n재검사', icon: 'clipboard-outline' },
+  { id: 'rbti-record', label: 'RBTI\n기록', icon: 'search-outline' },
+  { id: 'my-review', label: '나의\n리뷰', icon: 'star-outline' },
+  { id: 'quote-note', label: '필사\n노트', icon: 'document-text-outline' },
+  { id: 'liked-review', label: '좋아한\n리뷰', icon: 'heart' },
+  { id: 'reading-calendar', label: '독서\n달력', icon: 'calendar-outline' },
+  { id: 'reading-stats', label: '독서\n통계', icon: 'bar-chart-outline' },
+  { id: 'settings', label: '설정', icon: 'settings' },
+];
+
+const WEEK_LABELS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const YEAR_OPTIONS = Array.from({ length: 41 }, (_, index) => 2000 + index);
+const PICKER_ITEM_HEIGHT = 44;
+const PICKER_ITEM_GAP = 8;
+const PICKER_VISIBLE_HEIGHT = 260;
+const PICKER_ROW_UNIT = PICKER_ITEM_HEIGHT + PICKER_ITEM_GAP;
+
+const DONUT_STATS: StatItem[] = [
+  {
+    label: '문학',
+    percent: '48.8%',
+    value: 48.8,
+    fill: '#DCA047',
+    textColor: '#DCA047',
+  },
+  {
+    label: '경영/경제',
+    percent: '24.3%',
+    value: 24.3,
+    fill: '#E4BC8F',
+    textColor: '#DCA047',
+  },
+  {
+    label: '시',
+    percent: '14.6%',
+    value: 14.6,
+    fill: '#E9D5BF',
+    textColor: '#DCA047',
+  },
+  {
+    label: '과학',
+    percent: '12.3%',
+    value: 12.3,
+    fill: '#F2E9DC',
+    textColor: '#DCA047',
+  },
+];
+
+const CELL_GAP = 8;
+const CALENDAR_HORIZONTAL = 36;
+const CELL_WIDTH = (SCREEN_WIDTH - CALENDAR_HORIZONTAL * 2 - CELL_GAP * 6) / 7;
+const DONUT_SIZE = Math.min(SCREEN_WIDTH - 72, 300);
+const DONUT_STROKE_WIDTH = 40;
+
+function buildCalendarDays(year: number, month: number, completedCoverByDay: Map<number, string>): CalendarDay[] {
+  const firstWeekdaySundayStart = new Date(year, month, 1).getDay();
+  const firstWeekdayMondayStart = (firstWeekdaySundayStart + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const days: CalendarDay[] = [];
+
+  for (let i = 0; i < firstWeekdayMondayStart; i += 1) {
+    days.push({ day: null });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    days.push({ day, coverUrl: completedCoverByDay.get(day) });
+  }
+
+  const trailingEmptyCells = (7 - (days.length % 7)) % 7;
+  for (let i = 0; i < trailingEmptyCells; i += 1) {
+    days.push({ day: null });
+  }
+
+  return days;
+}
+
+function getDateParts(value: string | null): { year: number; month: number; day: number } | null {
+  if (!value) {
+    return null;
+  }
+
+  const raw = value.slice(0, 10);
+  const [yearText, monthText, dayText] = raw.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+
+  return { year, month, day };
+}
 
 export default function MyPageScreen() {
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
+  const [userRbtiName, setUserRbtiName] = useState<string>('');
+  const [userNickname, setUserNickname] = useState<string>('');
 
-  const onPressLogout = () => {
-	Alert.alert('로그아웃', '로그아웃할까요?', [
-	  { text: '취소', style: 'cancel' },
-	  {
-		text: '로그아웃',
-		style: 'destructive',
-		onPress: async () => {
-		  await logout();
-		},
-	  },
-	]);
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const userResponse = await getMe();
+      setUserNickname(userResponse.nickname);
+    } catch (error) {
+      setUserNickname('');
+    }
+
+    try {
+      const rbtiResponse = await getCurrentUserRbti();
+      if (rbtiResponse.has_rbti && rbtiResponse.current_rbti?.rbti_name) {
+        setUserRbtiName(rbtiResponse.current_rbti.rbti_name);
+      } else {
+        setUserRbtiName('');
+      }
+    } catch (error) {
+      setUserRbtiName('');
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchUserProfile();
+    }, [fetchUserProfile]),
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <UserProfileHeader
+          rbtiName={userRbtiName}
+          nickname={userNickname}
+          rightAccessory={(
+            <Pressable style={userProfileHeaderStyles.editButton} hitSlop={10}>
+              <Text style={userProfileHeaderStyles.editButtonText}>프로필 수정</Text>
+            </Pressable>
+          )}
+        />
+
+        <MenuGrid />
+
+        <DividerBlock />
+
+        <ReadingCalendarSection />
+
+        <DividerBlock />
+
+        <ReadingStatsSection />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function MenuGrid() {
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
+
+  const handleMenuPress = (id: MenuItem['id']) => {
+    if (id === 'settings') {
+      navigation.navigate('Settings');
+    }
   };
 
   return (
-	<ScreenContainer>
-	  <View style={styles.card}>
-		<Text style={styles.title}>마이페이지</Text>
-		<Text style={styles.description}>이메일: {user?.email ?? '-'}</Text>
-		<Text style={styles.description}>닉네임: {user?.nickname ?? '-'}</Text>
+    <View style={styles.menuGrid}>
+      {MENU_ITEMS.map((item) => (
+        <Pressable key={item.id} style={styles.menuItem} onPress={() => handleMenuPress(item.id)}>
+          <Ionicons name={item.icon} size={34} color="#FEC54B" />
+          <Text style={styles.menuText}>{item.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
-		<Pressable style={styles.logoutButton} onPress={onPressLogout}>
-		  <Text style={styles.logoutText}>로그아웃</Text>
-		</Pressable>
-	  </View>
-	</ScreenContainer>
+function DividerBlock() {
+  return <View style={styles.dividerBlock} />;
+}
+
+function ReadingCalendarSection() {
+  const today = new Date();
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
+  const [draftYear, setDraftYear] = useState<number>(today.getFullYear());
+  const [draftMonth, setDraftMonth] = useState<number>(today.getMonth());
+  const [completedBooks, setCompletedBooks] = useState<UserLibraryBook[]>([]);
+  const yearScrollRef = useRef<ScrollView>(null);
+  const monthScrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchCompletedBooks = async () => {
+        try {
+          const doneBooks = await getMyLibraryBooks('DONE');
+          setCompletedBooks(doneBooks);
+        } catch (error) {
+          setCompletedBooks([]);
+        }
+      };
+
+      void fetchCompletedBooks();
+    }, []),
+  );
+
+  const completedCoverByDay = useMemo(() => {
+    const coverByDay = new Map<number, string>();
+
+    completedBooks.forEach((book) => {
+      const dateParts = getDateParts(book.finished_at);
+      if (!dateParts) {
+        return;
+      }
+
+      const isSameYear = dateParts.year === selectedYear;
+      const isSameMonth = dateParts.month === selectedMonth + 1;
+      if (!isSameYear || !isSameMonth) {
+        return;
+      }
+
+      if (!book.book_thumbnail_url || coverByDay.has(dateParts.day)) {
+        return;
+      }
+
+      coverByDay.set(dateParts.day, book.book_thumbnail_url);
+    });
+
+    return coverByDay;
+  }, [completedBooks, selectedMonth, selectedYear]);
+
+  const calendarDays = useMemo(
+    () => buildCalendarDays(selectedYear, selectedMonth, completedCoverByDay),
+    [completedCoverByDay, selectedYear, selectedMonth],
+  );
+
+  const openPicker = () => {
+    setDraftYear(selectedYear);
+    setDraftMonth(selectedMonth);
+    setIsPickerVisible(true);
+
+    requestAnimationFrame(() => {
+      const yearIndex = YEAR_OPTIONS.findIndex((year) => year === selectedYear);
+      const yearOffset = Math.max(
+        0,
+        yearIndex * PICKER_ROW_UNIT - (PICKER_VISIBLE_HEIGHT - PICKER_ITEM_HEIGHT) / 2,
+      );
+      const monthOffset = Math.max(
+        0,
+        selectedMonth * PICKER_ROW_UNIT - (PICKER_VISIBLE_HEIGHT - PICKER_ITEM_HEIGHT) / 2,
+      );
+
+      yearScrollRef.current?.scrollTo({ y: yearOffset, animated: false });
+      monthScrollRef.current?.scrollTo({ y: monthOffset, animated: false });
+    });
+  };
+
+  const applySelectedMonthYear = () => {
+    setSelectedYear(draftYear);
+    setSelectedMonth(draftMonth);
+    setIsPickerVisible(false);
+  };
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>독서 달력</Text>
+
+      <View style={styles.calendarHeaderRow}>
+        <Pressable style={styles.monthButton} onPress={openPicker}>
+          <Text style={styles.monthText}>{`${MONTH_LABELS[selectedMonth]} ${selectedYear}`}</Text>
+          <Ionicons name="chevron-down" size={20} color="#FEC54B" />
+        </Pressable>
+
+        <Pressable>
+          <Ionicons name="share-outline" size={24} color="#FEC54B" />
+        </Pressable>
+      </View>
+
+      <View style={styles.weekHeaderRow}>
+        {WEEK_LABELS.map((label) => (
+          <Text key={label} style={styles.weekLabel}>
+            {label}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.calendarGrid}>
+        {calendarDays.map((item, index) => (
+          <CalendarCell key={`${selectedYear}-${selectedMonth}-${item.day}-${index}`} item={item} weekdayIndex={index % 7} />
+        ))}
+      </View>
+
+      <Modal
+        visible={isPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsPickerVisible(false)}
+      >
+        <Pressable style={styles.pickerBackdrop} onPress={() => setIsPickerVisible(false)}>
+          <Pressable style={styles.pickerCard} onPress={() => {}}>
+            <Text style={styles.pickerTitle}>연도/월 선택</Text>
+
+            <View style={styles.pickerColumns}>
+              <ScrollView ref={yearScrollRef} style={styles.pickerColumn} showsVerticalScrollIndicator={false}>
+                {YEAR_OPTIONS.map((year) => (
+                  <Pressable
+                    key={year}
+                    style={[styles.pickerItem, draftYear === year && styles.pickerItemSelected]}
+                    onPress={() => setDraftYear(year)}
+                  >
+                    <Text style={[styles.pickerItemText, draftYear === year && styles.pickerItemTextSelected]}>
+                      {year}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              <ScrollView ref={monthScrollRef} style={styles.pickerColumn} showsVerticalScrollIndicator={false}>
+                {MONTH_LABELS.map((monthLabel, monthIndex) => (
+                  <Pressable
+                    key={monthLabel}
+                    style={[styles.pickerItem, draftMonth === monthIndex && styles.pickerItemSelected]}
+                    onPress={() => setDraftMonth(monthIndex)}
+                  >
+                    <Text style={[styles.pickerItemText, draftMonth === monthIndex && styles.pickerItemTextSelected]}>
+                      {monthLabel}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.pickerActionRow}>
+              <Pressable style={styles.pickerCancelButton} onPress={() => setIsPickerVisible(false)}>
+                <Text style={styles.pickerCancelText}>취소</Text>
+              </Pressable>
+              <Pressable style={styles.pickerApplyButton} onPress={applySelectedMonthYear}>
+                <Text style={styles.pickerApplyText}>적용</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+function CalendarCell({ item, weekdayIndex }: { item: CalendarDay; weekdayIndex: number }) {
+  if (item.day === null) {
+    return <View style={styles.calendarCell} />;
+  }
+
+  const isSaturday = weekdayIndex === 5;
+  const isSunday = weekdayIndex === 6;
+
+  return (
+    <View style={styles.calendarCell}>
+      <View style={styles.bookSlot}>
+        {item.coverUrl ? (
+          <Image source={{ uri: item.coverUrl }} style={styles.bookCover} resizeMode="cover" />
+        ) : null}
+        {!item.coverUrl ? (
+          <Text
+            style={[
+              styles.dayNumber,
+              isSaturday && styles.saturdayText,
+              isSunday && styles.sundayText,
+            ]}
+          >
+            {item.day}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function DonutChart({ data }: { data: StatItem[] }) {
+  const center = DONUT_SIZE / 2;
+  const radius = center - DONUT_STROKE_WIDTH / 2;
+  const circumference = 2 * Math.PI * radius;
+  let cumulativePercent = 0;
+
+  return (
+    <View style={styles.donutChartWrap}>
+      <Svg width={DONUT_SIZE} height={DONUT_SIZE}>
+        <G rotation={-90} origin={`${center}, ${center}`}>
+          {data.map((item) => {
+            const dashLength = (item.value / 100) * circumference;
+            const dashOffset = circumference - (cumulativePercent / 100) * circumference;
+            cumulativePercent += item.value;
+
+            return (
+              <Circle
+                key={item.label}
+                cx={center}
+                cy={center}
+                r={radius}
+                fill="none"
+                stroke={item.fill}
+                strokeWidth={DONUT_STROKE_WIDTH}
+                strokeLinecap="butt"
+                strokeDasharray={`${dashLength} ${circumference}`}
+                strokeDashoffset={dashOffset}
+              />
+            );
+          })}
+        </G>
+      </Svg>
+
+      <View style={styles.donutCenterHole}>
+        <Text style={styles.donutCenterTitle}>도서 분야</Text>
+      </View>
+    </View>
+  );
+}
+
+function ReadingStatsSection() {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>독서 통계</Text>
+
+      <View style={styles.statsTextWrap}>
+        <Text style={styles.statsMainTitle}>도서 분야</Text>
+        <Text style={styles.statsSubTitle}>"완료" 상태의 도서 기준</Text>
+      </View>
+
+      <View style={styles.donutSection}>
+        <DonutChart data={DONUT_STATS} />
+
+        <View style={styles.statsLegendWrap}>
+          {DONUT_STATS.map((item) => (
+            <View key={item.label} style={styles.statsLegendRow}>
+              <View style={[styles.legendDot, { backgroundColor: item.fill }]} />
+              <Text style={styles.statsLegendLabel}>{item.label}</Text>
+              <View style={styles.percentPill}>
+                <Text style={[styles.percentText, { color: item.textColor }]}>{item.percent}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-	backgroundColor: '#FFFFFF',
-	padding: 20,
-	borderRadius: 16,
-	borderWidth: 1,
-	borderColor: '#E5E2DD',
-	gap: 10,
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
   },
-  title: {
-	fontSize: 24,
-	fontWeight: '700',
+  contentContainer: {
+    paddingTop: 18,
+    paddingBottom: 130,
   },
-  description: {
-	fontSize: 15,
-	color: '#6D655D',
+
+  menuGrid: {
+    paddingHorizontal: 34,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 28,
+    marginBottom: 34,
   },
-  logoutButton: {
-	marginTop: 16,
-	backgroundColor: '#5B4B3A',
-	borderRadius: 12,
-	paddingVertical: 14,
-	alignItems: 'center',
+  menuItem: {
+    width: '22%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logoutText: {
-	color: '#FFFFFF',
-	fontSize: 16,
-	fontWeight: '700',
+  menuText: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '500',
+    color: '#32353B',
+    textAlign: 'center',
+  },
+
+  dividerBlock: {
+    height: 25,
+    backgroundColor: '#FFF6EA',
+    marginBottom: 24,
+  },
+
+  section: {
+    paddingHorizontal: 36,
+    marginBottom: 28,
+  },
+  sectionTitle: {
+    fontSize: 23,
+    fontWeight: '800',
+    color: '#202228',
+    marginBottom: 26,
+  },
+
+  calendarHeaderRow: {
+    marginBottom: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  monthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  monthText: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#3A3D43',
+    marginRight: 6,
+  },
+
+  weekHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingHorizontal: 2,
+  },
+  weekLabel: {
+    width: CELL_WIDTH,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#9598A1',
+  },
+
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: CELL_GAP,
+    rowGap: 18,
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  pickerCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 14,
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2025',
+    marginBottom: 14,
+    textAlign: 'center',
+  },
+  pickerColumns: {
+    flexDirection: 'row',
+    columnGap: 10,
+    marginBottom: 14,
+  },
+  pickerColumn: {
+    flex: 1,
+    maxHeight: 260,
+  },
+  pickerItem: {
+    borderRadius: 10,
+    height: PICKER_ITEM_HEIGHT,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    backgroundColor: '#F7F7F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#FFF6EA',
+  },
+  pickerItemText: {
+    fontSize: 14,
+    color: '#454851',
+    fontWeight: '500',
+  },
+  pickerItemTextSelected: {
+    color: '#E67F1E',
+    fontWeight: '700',
+  },
+  pickerActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    columnGap: 8,
+  },
+  pickerCancelButton: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#EFEFF1',
+  },
+  pickerCancelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#5A5D66',
+  },
+  pickerApplyButton: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#FEC54B',
+  },
+  pickerApplyText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  calendarCell: {
+    width: CELL_WIDTH,
+    alignItems: 'center',
+  },
+  bookSlot: {
+    width: CELL_WIDTH,
+    height: CELL_WIDTH * 1.42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  bookCover: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  dayNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4A4D55',
+  },
+  saturdayText: {
+    color: '#1385FF',
+  },
+  sundayText: {
+    color: '#FF5D89',
+  },
+
+  statsTextWrap: {
+    marginBottom: 26,
+  },
+  statsMainTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2A2D33',
+    marginBottom: 4,
+  },
+  statsSubTitle: {
+    fontSize: 12,
+    color: '#8A8E98',
+  },
+
+  donutSection: {
+    alignItems: 'center',
+  },
+  donutChartWrap: {
+    width: DONUT_SIZE,
+    height: DONUT_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donutCenterHole: {
+    position: 'absolute',
+    width: DONUT_SIZE - DONUT_STROKE_WIDTH * 2,
+    height: DONUT_SIZE - DONUT_STROKE_WIDTH * 2,
+    borderRadius: 999,
+    backgroundColor: '#F6F6F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donutCenterTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#A8844C',
+  },
+  statsLegendWrap: {
+    marginTop: 20,
+    width: '100%',
+    rowGap: 10,
+  },
+  statsLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  statsLegendLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2A2D33',
+  },
+  percentPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: '#FFF5E8',
+  },
+  percentText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DCA047',
   },
 });

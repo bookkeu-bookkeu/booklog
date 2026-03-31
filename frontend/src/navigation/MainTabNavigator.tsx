@@ -16,7 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import ProfileScreen from '../screens/profile/ProfileScreen';
+import ProfileNavigator from './ProfileNavigator';
 import HomeNavigator from './HomeNavigator';
 import LibraryNavigator from './LibraryNavigator';
 import SearchNavigator from './SearchNavigator';
@@ -83,6 +83,17 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       : undefined;
   const focusedLibraryRouteName =
     nestedLibraryState?.routes?.[nestedLibraryState.index ?? 0]?.name;
+  const nestedProfileState =
+    activeRoute.name === 'ProfileTab'
+      ? (activeRoute.state as
+          | {
+              index?: number;
+              routes?: Array<{ name?: string }>;
+            }
+          | undefined)
+      : undefined;
+  const focusedProfileRouteName =
+    nestedProfileState?.routes?.[nestedProfileState.index ?? 0]?.name;
   const shouldHideTabBar =
     focusedHomeRouteName === 'BookDetail' ||
     focusedHomeRouteName === 'BookReview' ||
@@ -101,7 +112,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     focusedLibraryRouteName === 'BookReviewCreate' ||
     focusedLibraryRouteName === 'QuoteNote' ||
     focusedLibraryRouteName === 'QuoteNoteBookSelect' ||
-    focusedLibraryRouteName === 'QuoteNoteCreate';
+    focusedLibraryRouteName === 'QuoteNoteCreate' ||
+    focusedProfileRouteName === 'Settings';
 
   const homeFocused = activeIndex === 0;
   const searchFocused = activeIndex === 1;
@@ -322,7 +334,7 @@ export default function MainTabNavigator() {
       <Tab.Screen name="HomeTab" component={HomeNavigator} />
       <Tab.Screen name="SearchTab" component={SearchNavigator} />
       <Tab.Screen name="LibraryTab" component={LibraryNavigator} />
-      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
+      <Tab.Screen name="ProfileTab" component={ProfileNavigator} />
     </Tab.Navigator>
   );
 }

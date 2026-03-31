@@ -37,3 +37,7 @@ export const getMe = async (): Promise<User> => {
   const { data } = await api.get<User>('/users/me/');
   return data;
 };
+
+export const deleteMe = async (): Promise<void> => {
+  await api.delete('/users/me/');
+};
