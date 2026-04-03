@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
+  LayoutChangeEvent,
   Modal,
   Pressable,
   SafeAreaView,
@@ -76,7 +77,7 @@ const DONUT_STATS: StatItem[] = [
     textColor: '#DCA047',
   },
   {
-    label: '시',
+    label: '에세이',
     percent: '14.6%',
     value: 14.6,
     fill: '#E9D5BF',
@@ -141,6 +142,10 @@ function getDateParts(value: string | null): { year: number; month: number; day:
 export default function MyPageScreen() {
   const [userRbtiName, setUserRbtiName] = useState<string>('');
   const [userNickname, setUserNickname] = useState<string>('');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [calendarDividerY, setCalendarDividerY] = useState(0);
+  const [calendarSectionY, setCalendarSectionY] = useState(0);
+  const [statsSectionY, setStatsSectionY] = useState(0);
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -168,9 +173,19 @@ export default function MyPageScreen() {
     }, [fetchUserProfile]),
   );
 
+  const scrollToCalendarSection = useCallback(() => {
+    const targetY = calendarDividerY > 0 ? calendarDividerY : calendarSectionY;
+    scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY - 8), animated: true });
+  }, [calendarDividerY, calendarSectionY]);
+
+  const scrollToStatsSection = useCallback(() => {
+    scrollViewRef.current?.scrollTo({ y: Math.max(0, statsSectionY - 8), animated: true });
+  }, [statsSectionY]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
@@ -184,26 +199,67 @@ export default function MyPageScreen() {
           )}
         />
 
-        <MenuGrid />
+        <MenuGrid
+          onReadingCalendarPress={scrollToCalendarSection}
+          onReadingStatsPress={scrollToStatsSection}
+        />
+
+        <DividerBlock
+          onLayout={(event) => {
+            setCalendarDividerY(event.nativeEvent.layout.y);
+          }}
+        />
+
+        <ReadingCalendarSection
+          onLayout={(event) => {
+            setCalendarSectionY(event.nativeEvent.layout.y);
+          }}
+        />
 
         <DividerBlock />
 
-        <ReadingCalendarSection />
-
-        <DividerBlock />
-
-        <ReadingStatsSection />
+        <ReadingStatsSection
+          onLayout={(event) => {
+            setStatsSectionY(event.nativeEvent.layout.y);
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function MenuGrid() {
+function MenuGrid({
+  onReadingCalendarPress,
+  onReadingStatsPress,
+}: {
+  onReadingCalendarPress: () => void;
+  onReadingStatsPress: () => void;
+}) {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
 
   const handleMenuPress = (id: MenuItem['id']) => {
+    if (id === 'my-review') {
+      navigation.navigate('MyReview');
+    }
+
+    if (id === 'quote-note') {
+      navigation.navigate('MyQuoteNote');
+    }
+
+    if (id === 'liked-review') {
+      navigation.navigate('FavoriteReview');
+    }
+
     if (id === 'settings') {
       navigation.navigate('Settings');
+    }
+
+    if (id === 'reading-calendar') {
+      onReadingCalendarPress();
+    }
+
+    if (id === 'reading-stats') {
+      onReadingStatsPress();
     }
   };
 
@@ -219,11 +275,11 @@ function MenuGrid() {
   );
 }
 
-function DividerBlock() {
-  return <View style={styles.dividerBlock} />;
+function DividerBlock({ onLayout }: { onLayout?: (event: LayoutChangeEvent) => void }) {
+  return <View style={styles.dividerBlock} onLayout={onLayout} />;
 }
 
-function ReadingCalendarSection() {
+function ReadingCalendarSection({ onLayout }: { onLayout?: (event: LayoutChangeEvent) => void }) {
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
@@ -307,7 +363,7 @@ function ReadingCalendarSection() {
   };
 
   return (
-    <View style={styles.section}>
+    <View style={styles.section} onLayout={onLayout}>
       <Text style={styles.sectionTitle}>독서 달력</Text>
 
       <View style={styles.calendarHeaderRow}>
@@ -460,9 +516,9 @@ function DonutChart({ data }: { data: StatItem[] }) {
   );
 }
 
-function ReadingStatsSection() {
+function ReadingStatsSection({ onLayout }: { onLayout?: (event: LayoutChangeEvent) => void }) {
   return (
-    <View style={styles.section}>
+    <View style={styles.section} onLayout={onLayout}>
       <Text style={styles.sectionTitle}>독서 통계</Text>
 
       <View style={styles.statsTextWrap}>

@@ -113,6 +113,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     focusedLibraryRouteName === 'QuoteNote' ||
     focusedLibraryRouteName === 'QuoteNoteBookSelect' ||
     focusedLibraryRouteName === 'QuoteNoteCreate' ||
+    focusedProfileRouteName === 'BookReviewCreate' ||
+    focusedProfileRouteName === 'QuoteNote' ||
     focusedProfileRouteName === 'Settings';
 
   const homeFocused = activeIndex === 0;

@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   Image,
   View,
@@ -51,6 +52,8 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
     done: '',
   });
   const [selectedBook, setSelectedBook] = useState<UserLibraryBook | null>(null);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   const outgoingTranslateX = React.useRef(new Animated.Value(0)).current;
   const incomingTranslateX = React.useRef(new Animated.Value(0)).current;
@@ -228,6 +231,12 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
 
   const renderBookGrid = (tab: SelectTab, listKey: string, animatedStyle?: object) => {
     const books = booksByTab[tab] ?? [];
+    const filteredBooks =
+      searchText.trim().length > 0
+        ? books.filter((item) =>
+            (item.book_title ?? '').toLowerCase().includes(searchText.trim().toLowerCase())
+          )
+        : books;
     const isLoading = loadingByTab[tab];
     const loadError = errorByTab[tab];
 
@@ -245,7 +254,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
             </View>
           ) : (
             <FlatList
-              data={books}
+              data={filteredBooks}
               keyExtractor={(item) => String(item.id)}
               showsVerticalScrollIndicator={false}
               numColumns={2}
@@ -300,7 +309,11 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
               }}
               ListEmptyComponent={
                 <View style={styles.stateBox}>
-                  <Text style={styles.stateText}>해당 탭에 책이 없습니다.</Text>
+                  <Text style={styles.stateText}>
+                    {searchText.trim().length > 0
+                      ? '검색 결과가 없습니다.'
+                      : '해당 탭에 책이 없습니다.'}
+                  </Text>
                 </View>
               }
             />
@@ -319,8 +332,28 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
 
         <Text style={styles.headerTitle}>책 선택</Text>
 
-        <View style={styles.headerRightSpace} />
+        <Pressable
+          style={styles.searchButton}
+          onPress={() => setIsSearchVisible((prev) => !prev)}
+        >
+          <Ionicons name="search" size={20} color="#F2B43C" />
+        </Pressable>
       </View>
+
+      {isSearchVisible ? (
+        <View style={styles.searchWrap}>
+          <TextInput
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="책 이름을 검색해 주세요"
+            placeholderTextColor="#9CA1AB"
+            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
+      ) : null}
 
       <View style={styles.switcherOuter}>
         <View style={styles.switcherContainer}>
@@ -402,8 +435,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F2025',
   },
-  headerRightSpace: {
+  searchButton: {
     width: 28,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  searchWrap: {
+    marginHorizontal: 28,
+    marginBottom: 14,
+  },
+  searchInput: {
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ECEFF5',
+    backgroundColor: '#F8F9FE',
+    paddingHorizontal: 14,
+    color: '#1F2025',
+    fontSize: 14,
   },
   switcherOuter: {
     marginHorizontal: 28,

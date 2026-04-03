@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     QuoteNoteDetailAPIView,
     QuoteNoteListCreateAPIView,
+    LikedReviewListAPIView,
     ReviewDetailAPIView,
     ReviewLikeAPIView,
     ReviewListCreateAPIView,
@@ -10,6 +11,7 @@ from .views import (
 
 urlpatterns = [
     path("", ReviewListCreateAPIView.as_view(), name="review-list-create"),
+    path("liked/", LikedReviewListAPIView.as_view(), name="liked-review-list"),
     path("<int:pk>/", ReviewDetailAPIView.as_view(), name="review-detail"),
     path("<int:pk>/like/", ReviewLikeAPIView.as_view(), name="review-like"),
 

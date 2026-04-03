@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.permissions import IsOwner, IsReviewVisibleOrOwner, CanLikeReview
-from .models import QuoteNote, Review
+from .models import QuoteNote, Review, ReviewLike
 from .serializers import (
     QuoteNoteCreateUpdateSerializer,
     QuoteNoteDetailSerializer,
@@ -78,6 +78,27 @@ class ReviewListCreateAPIView(APIView):
 
         response_serializer = ReviewDetailSerializer(review)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class LikedReviewListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        liked_reviews = (
+            ReviewLike.objects.select_related(
+                "review",
+                "review__user",
+                "review__book",
+                "review__user_book",
+                "review__analysis_result__inferred_rbti_type",
+            )
+            .filter(user=request.user)
+            .order_by("-created_at")
+        )
+
+        reviews = [like.review for like in liked_reviews]
+        serializer = ReviewListSerializer(reviews, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ReviewDetailAPIView(APIView):

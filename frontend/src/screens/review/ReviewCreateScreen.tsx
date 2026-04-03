@@ -104,6 +104,12 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
     await updateLibraryBookShelf(matched.id, 'DONE');
   };
 
+  const handleBackPress = () => {
+    if (navigation.canGoBack()) {
+      navigation.pop();
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -245,7 +251,7 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
           <Pressable
             hitSlop={12}
             style={styles.backButton}
-            onPress={() => navigation?.goBack?.()}
+            onPress={handleBackPress}
           >
             <Ionicons name="chevron-back" size={28} color="#FEC54B" />
           </Pressable>

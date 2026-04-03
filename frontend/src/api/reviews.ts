@@ -77,18 +77,23 @@ export interface BookRbtiFilterOption {
 }
 
 export async function getBookReviews(
-  bookId: number,
+  bookId?: number,
   options?: GetBookReviewsOptions
 ): Promise<ReviewItem[]> {
   const response = await api.get<ReviewItem[]>('/reviews/', {
     params: {
-      book_id: bookId,
+      ...(typeof bookId === 'number' ? { book_id: bookId } : {}),
       ...(options?.mine ? { mine: 'true' } : {}),
       ...(options?.visibility ? { visibility: options.visibility } : {}),
       ...(options?.rbtiCode ? { rbti_code: options.rbtiCode } : {}),
     },
   });
 
+  return response.data ?? [];
+}
+
+export async function getLikedReviews(): Promise<ReviewItem[]> {
+  const response = await api.get<ReviewItem[]>('/reviews/liked/');
   return response.data ?? [];
 }
 

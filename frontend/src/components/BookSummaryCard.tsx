@@ -17,6 +17,7 @@ type Props = {
   thumbnail?: string;
   onPress?: () => void;
   variant?: CardVariant;
+  backgroundColor?: string;
   showAddedBadge?: boolean;
   addedBadgeLabel?: string;
 };
@@ -28,6 +29,7 @@ export default function BookSummaryCard({
   thumbnail,
   onPress,
   variant = 'form',
+  backgroundColor,
   showAddedBadge = false,
   addedBadgeLabel = '추가됨',
 }: Props) {
@@ -38,6 +40,7 @@ export default function BookSummaryCard({
   const wrapperStyle = [
     styles.card,
     isSearchVariant ? styles.searchCard : styles.formCard,
+    backgroundColor ? { backgroundColor } : null,
   ];
 
   const thumbnailAreaStyle = [
