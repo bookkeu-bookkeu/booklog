@@ -52,14 +52,14 @@ class UserRbtiSnapshot(models.Model):
 
 
 class RbtiSurveyQuestion(models.Model):
-    AXIS_ANALYTIC_IMMERSION = "analytic_immersion"
-    AXIS_CRITICAL_EMPATHY = "critical_empathy"
-    AXIS_PRACTICAL_EXPANSION = "practical_expansion"
+    AXIS_RECEPTIVE_INQUISITIVE = "receptive_inquisitive"
+    AXIS_ANALYTIC_EMPATHIC = "analytic_empathic"
+    AXIS_NARRATIVE_SENTENCE = "narrative_sentence"
 
     AXIS_CHOICES = [
-        (AXIS_ANALYTIC_IMMERSION, "Analytic / Immersion"),
-        (AXIS_CRITICAL_EMPATHY, "Critical / Empathy"),
-        (AXIS_PRACTICAL_EXPANSION, "Practical / Expansion"),
+        (AXIS_RECEPTIVE_INQUISITIVE, "Receptive / Inquisitive"),
+        (AXIS_ANALYTIC_EMPATHIC, "Analytic / Empathic"),
+        (AXIS_NARRATIVE_SENTENCE, "Narrative / Sentence"),
     ]
 
     question_text = models.TextField()
