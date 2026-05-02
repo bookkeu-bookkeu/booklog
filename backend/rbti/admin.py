@@ -4,6 +4,7 @@ from .models import (
     RbtiType,
     UserRbtiSnapshot,
     RbtiSurveyQuestion,
+    RbtiSurveyChoice,
     RbtiSurveySession,
     RbtiSurveyAnswer,
 )
@@ -32,12 +33,18 @@ class UserRbtiSnapshotAdmin(admin.ModelAdmin):
     ordering = ("id",)
 
 
+class RbtiSurveyChoiceInline(admin.TabularInline):
+    model = RbtiSurveyChoice
+    extra = 4
+
+
 @admin.register(RbtiSurveyQuestion)
 class RbtiSurveyQuestionAdmin(admin.ModelAdmin):
     list_display = ("id", "order_no", "axis_type", "is_active")
     list_filter = ("axis_type", "is_active")
     search_fields = ("question_text",)
     ordering = ("order_no", "id")
+    inlines = [RbtiSurveyChoiceInline]
 
 
 @admin.register(RbtiSurveySession)

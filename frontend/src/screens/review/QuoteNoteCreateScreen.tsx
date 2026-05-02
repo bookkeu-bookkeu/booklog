@@ -17,6 +17,7 @@ import { SearchStackParamList } from '../../navigation/types';
 import { importBookByIsbn13 } from '../../api/books';
 import { createQuoteNote, updateQuoteNote } from '../../api/reviews';
 import BookSummaryCard from '../../components/BookSummaryCard';
+import BottomActionButton from '../../components/BottomActionButton';
 
 type Props = NativeStackScreenProps<SearchStackParamList, 'QuoteNoteCreate'>;
 const QUOTE_INPUT_MIN_HEIGHT = 124;
@@ -203,11 +204,11 @@ export default function QuoteNoteCreateScreen({ navigation, route }: Props) {
 
         <View style={styles.buttonSection}>
           <View style={styles.bottomButtonWrap}>
-            <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={isSaving}>
-              <Text style={styles.submitButtonText}>
-                {isSaving ? '저장 중...' : isEditMode ? '수정 완료' : '완료하기'}
-              </Text>
-            </Pressable>
+            <BottomActionButton
+              label={isSaving ? '저장 중...' : isEditMode ? '수정 완료' : '완료하기'}
+              onPress={handleSubmit}
+              disabled={isSaving}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -306,17 +307,5 @@ const styles = StyleSheet.create({
     bottom: 30,
     position: 'absolute',
     zIndex: 3,
-  },
-  submitButton: {
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#F5C24B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });

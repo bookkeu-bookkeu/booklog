@@ -238,6 +238,10 @@ function MenuGrid({
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
 
   const handleMenuPress = (id: MenuItem['id']) => {
+    if (id === 'rbti-retest') {
+      navigation.navigate('RbtiSurvey');
+    }
+
     if (id === 'my-review') {
       navigation.navigate('MyReview');
     }

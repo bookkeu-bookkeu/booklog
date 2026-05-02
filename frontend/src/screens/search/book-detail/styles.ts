@@ -328,7 +328,7 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    bottom: 30,
+    bottom: 40,
     zIndex: 3,
   },
   bottomSolidOverlay: {

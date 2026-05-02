@@ -21,6 +21,7 @@ import {
 } from '../../api/books';
 import { createReview, deleteReview, getBookReviews, updateReview } from '../../api/reviews';
 import BookSummaryCard from '../../components/BookSummaryCard';
+import BottomActionButton from '../../components/BottomActionButton';
 
 type Props = NativeStackScreenProps<SearchStackParamList, 'BookReviewCreate'>;
 
@@ -372,9 +373,11 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
           </ScrollView>
 
         <View style={styles.footer}>
-          <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={isSaving}>
-            <Text style={styles.submitButtonText}>{isSaving ? '저장 중...' : '완료하기'}</Text>
-          </Pressable>
+          <BottomActionButton
+            label={isSaving ? '저장 중...' : '완료하기'}
+            onPress={handleSubmit}
+            disabled={isSaving}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

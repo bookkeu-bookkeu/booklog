@@ -402,7 +402,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
           style={styles.applyButton}
           onPress={handleApply}
         >
-          <Text style={styles.applyButtonText}>변경하기</Text>
+          <Text style={styles.applyButtonText}>선택하기</Text>
         </Pressable>
       </View>
     </SafeAreaView>

@@ -40,6 +40,7 @@ import {
 } from './helpers';
 import InfoSheetModal from './InfoSheetModal';
 import RecordActionModal from './RecordActionModal';
+import BottomActionButton from '../../../components/BottomActionButton';
 import { styles } from './styles';
 
 type SearchStackWithBookDetail = SearchStackParamList & {
@@ -829,8 +830,8 @@ export default function BookDetailScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.bottomButtonWrap}>
-          <Pressable
-            style={styles.addButton}
+          <BottomActionButton
+            label={userLibraryBook ? (isRecordSaving ? '저장 중...' : '기록 및 제거하기') : '추가하기'}
             onPress={() => {
               if (userLibraryBook) {
                 setRecordActionSheetVisible(true);
@@ -839,11 +840,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
               }
             }}
             disabled={isAddLoading}
-          >
-            <Text style={styles.addButtonText}>
-              {userLibraryBook ? (isRecordSaving ? '저장 중...' : '기록 및 제거하기') : '추가하기'}
-            </Text>
-          </Pressable>
+          />
         </View>
       </View>
     </SafeAreaView>

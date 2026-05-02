@@ -111,6 +111,11 @@ class RbtiSurveyAnswer(models.Model):
         on_delete=models.CASCADE,
         related_name="answers",
     )
+    choice = models.ForeignKey(
+        "rbti.RbtiSurveyChoice",
+        on_delete=models.PROTECT,
+        related_name="answers",
+    )
     answer_value = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -123,4 +128,40 @@ class RbtiSurveyAnswer(models.Model):
         ]
 
     def __str__(self):
-        return f"session={self.session_id}, question={self.question_id}"
+        return f"session={self.session_id}, question={self.question_id}, choice={self.choice_id}, value={self.answer_value}"
+    
+class RbtiSurveyChoice(models.Model):
+    LABEL_A = "A"
+    LABEL_B = "B"
+    LABEL_C = "C"
+    LABEL_D = "D"
+
+    LABEL_CHOICES = [
+        (LABEL_A, "A"),
+        (LABEL_B, "B"),
+        (LABEL_C, "C"),
+        (LABEL_D, "D"),
+    ]
+
+    question = models.ForeignKey(
+        "rbti.RbtiSurveyQuestion",
+        on_delete=models.CASCADE,
+        related_name="choices",
+    )
+    label = models.CharField(max_length=1, choices=LABEL_CHOICES)
+    choice_text = models.TextField()
+    score_value = models.IntegerField()
+    sort_order = models.PositiveSmallIntegerField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["question__order_no", "sort_order"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["question", "label"],
+                name="unique_choice_label_per_question",
+            )
+        ]
+
+    def __str__(self):
+        return f"Q{self.question_id} {self.label}. {self.choice_text[:20]}"

@@ -31,7 +31,65 @@ export interface CurrentUserRbtiResponse {
   current_rbti: CurrentUserRbti | null;
 }
 
+export interface RbtiSurveyChoice {
+  id: number;
+  label: string;
+  choice_text: string;
+  sort_order: number;
+}
+
+export interface RbtiSurveyQuestion {
+  id: number;
+  question_text: string;
+  axis_type: string;
+  order_no: number;
+  choices: RbtiSurveyChoice[];
+}
+
+export interface RbtiSurveyQuestionResponse {
+  count: number;
+  questions: RbtiSurveyQuestion[];
+}
+
+export interface RbtiSurveyAnswerPayload {
+  question_id: number;
+  choice_id: number;
+}
+
+export interface RbtiSurveySubmitPayload {
+  is_retest?: boolean;
+  answers: RbtiSurveyAnswerPayload[];
+}
+
+export interface RbtiSurveySubmitResponse {
+  detail: string;
+  axis_definitions: CurrentUserRbtiResponse['axis_definitions'];
+  session_id: number;
+  saved_answer_count: number;
+  raw_scores: Record<string, number>;
+  percentage_scores: Record<string, number>;
+  current_rbti: CurrentUserRbti;
+}
+
 export async function getCurrentUserRbti(): Promise<CurrentUserRbtiResponse> {
   const response = await api.get<CurrentUserRbtiResponse>('/rbti/me/');
+  return response.data;
+}
+
+export async function getRbtiSurveyQuestions(
+  options: { random?: boolean } = {},
+): Promise<RbtiSurveyQuestionResponse> {
+  const response = await api.get<RbtiSurveyQuestionResponse>('/rbti/questions/', {
+    params: {
+      ...(options.random ? { random: true } : {}),
+    },
+  });
+  return response.data;
+}
+
+export async function submitRbtiSurvey(
+  payload: RbtiSurveySubmitPayload,
+): Promise<RbtiSurveySubmitResponse> {
+  const response = await api.post<RbtiSurveySubmitResponse>('/rbti/submit/', payload);
   return response.data;
 }

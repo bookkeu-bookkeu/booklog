@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FavoriteReviewScreen from '../screens/profile/FavoriteReviewScreen';
 import MyQuoteNoteScreen from '../screens/profile/MyQuoteNoteScreen';
 import MyReviewScreen from '../screens/profile/MyReviewScreen';
+import RbtiSurveyScreen from '../screens/auth/RbtiSurveyScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
 import QuoteNoteListScreen from '../screens/review/QuoteNoteListScreen';
@@ -21,6 +22,7 @@ export type ProfileStackParamList = {
     book?: import('../navigation/types').Book;
   };
   Settings: undefined;
+  RbtiSurvey: undefined;
 };
 
 function ProfileReviewCreateScreen(props: any) {
@@ -43,6 +45,11 @@ export default function ProfileNavigator() {
       <Stack.Screen name="FavoriteReview" component={FavoriteReviewScreen} />
       <Stack.Screen name="BookReviewCreate" component={ProfileReviewCreateScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen
+        name="RbtiSurvey"
+        component={RbtiSurveyScreen}
+        options={{ gestureEnabled: false }}
+      />
     </Stack.Navigator>
   );
 }
