@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useScrollToTop } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Svg, { Circle, G } from 'react-native-svg';
@@ -172,6 +172,7 @@ export default function MyPageScreen() {
       void fetchUserProfile();
     }, [fetchUserProfile]),
   );
+  useScrollToTop(scrollViewRef);
 
   const scrollToCalendarSection = useCallback(() => {
     const targetY = calendarDividerY > 0 ? calendarDividerY : calendarSectionY;
@@ -240,6 +241,10 @@ function MenuGrid({
   const handleMenuPress = (id: MenuItem['id']) => {
     if (id === 'rbti-retest') {
       navigation.navigate('RbtiSurvey');
+    }
+
+    if (id === 'rbti-record') {
+      navigation.navigate('RbtiHistory');
     }
 
     if (id === 'my-review') {

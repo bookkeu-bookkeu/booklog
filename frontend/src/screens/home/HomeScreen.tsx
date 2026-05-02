@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useScrollToTop } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getMe } from '../../api/auth';
 import { getMyLibraryBooks } from '../../api/books';
@@ -76,6 +76,7 @@ function mapLibraryBookToHomeItem(item: {
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [readingBooks, setReadingBooks] = useState<HomeBookCardItem[]>([]);
   const [waitingReviewBooks, setWaitingReviewBooks] = useState<HomeBookCardItem[]>([]);
   const [isReadingBooksLoading, setIsReadingBooksLoading] = useState(true);
@@ -151,10 +152,12 @@ export default function HomeScreen() {
       void fetchHomeBooks();
     }, [fetchHomeBooks]),
   );
+  useScrollToTop(scrollViewRef);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >

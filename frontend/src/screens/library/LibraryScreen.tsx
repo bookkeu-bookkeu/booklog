@@ -13,7 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useScrollToTop } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getMyLibraryBooks } from '../../api/books';
@@ -51,6 +51,12 @@ export default function LibraryScreen() {
   const isAnimatingRef = useRef(false);
   const searchInputRef = useRef<TextInput | null>(null);
   const scrollRefs = useRef<Partial<Record<ShelfTabKey, ScrollView | null>>>({});
+  const activeTabRef = useRef<ShelfTabKey>('reading');
+  const activeScrollTopRef = useRef({
+    scrollToTop: () => {
+      scrollRefs.current[activeTabRef.current]?.scrollTo({ y: 0, animated: true });
+    },
+  });
   const outgoingTranslateX = useRef(new Animated.Value(0)).current;
   const incomingTranslateX = useRef(new Animated.Value(0)).current;
 
@@ -58,6 +64,8 @@ export default function LibraryScreen() {
   const interCardGap = 18;
   const cardWidth = (width - horizontalPadding * 2 - interCardGap) / 2;
   const swipeThreshold = Math.min(92, width * 0.22);
+
+  activeTabRef.current = activeTab;
 
   const fetchLibraryBooks = useCallback(async () => {
     try {
@@ -90,6 +98,7 @@ export default function LibraryScreen() {
       void fetchLibraryBooks();
     }, [fetchLibraryBooks]),
   );
+  useScrollToTop(activeScrollTopRef);
 
   useFocusEffect(
     useCallback(() => {

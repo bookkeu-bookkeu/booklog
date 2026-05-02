@@ -5,6 +5,7 @@ from .models import (
     UserRbtiSnapshot,
     RbtiSurveyQuestion,
     RbtiSurveyChoice,
+    RbtiSurveySession,
 )
 
 RBTI_AXIS_DEFINITIONS = [
@@ -80,6 +81,20 @@ class UserCurrentRbtiSerializer(serializers.ModelSerializer):
             "expansion_score",
             "source_type",
             "source_ref_id",
+            "created_at",
+        ]
+
+
+class UserRbtiHistorySerializer(serializers.ModelSerializer):
+    rbti_code = serializers.CharField(source="rbti_type.code", read_only=True)
+    rbti_name = serializers.CharField(source="rbti_type.name", read_only=True)
+
+    class Meta:
+        model = RbtiSurveySession
+        fields = [
+            "id",
+            "rbti_code",
+            "rbti_name",
             "created_at",
         ]
 

@@ -114,6 +114,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     focusedLibraryRouteName === 'QuoteNoteBookSelect' ||
     focusedLibraryRouteName === 'QuoteNoteCreate' ||
     focusedProfileRouteName === 'RbtiSurvey' ||
+    focusedProfileRouteName === 'RbtiHistory' ||
     focusedProfileRouteName === 'BookReviewCreate' ||
     focusedProfileRouteName === 'QuoteNote' ||
     focusedProfileRouteName === 'Settings';

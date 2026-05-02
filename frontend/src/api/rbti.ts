@@ -71,8 +71,25 @@ export interface RbtiSurveySubmitResponse {
   current_rbti: CurrentUserRbti;
 }
 
+export interface RbtiHistoryItem {
+  id: number;
+  rbti_code: string;
+  rbti_name: string;
+  created_at: string;
+}
+
+export interface RbtiHistoryResponse {
+  count: number;
+  results: RbtiHistoryItem[];
+}
+
 export async function getCurrentUserRbti(): Promise<CurrentUserRbtiResponse> {
   const response = await api.get<CurrentUserRbtiResponse>('/rbti/me/');
+  return response.data;
+}
+
+export async function getRbtiHistory(): Promise<RbtiHistoryResponse> {
+  const response = await api.get<RbtiHistoryResponse>('/rbti/history/');
   return response.data;
 }
 

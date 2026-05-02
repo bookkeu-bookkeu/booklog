@@ -22,6 +22,7 @@ from .serializers import (
     AdminAssignUserRbtiRequestSerializer,
     RBTI_AXIS_DEFINITIONS,
     RbtiTypeListSerializer,
+    UserRbtiHistorySerializer,
     UserCurrentRbtiSerializer,
     RbtiSurveyQuestionSerializer,
     RbtiSurveySubmitSerializer,
@@ -128,6 +129,25 @@ class CurrentUserRbtiAPIView(APIView):
                 "has_rbti": True,
                 "axis_definitions": RBTI_AXIS_DEFINITIONS,
                 "current_rbti": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class UserRbtiHistoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        queryset = (
+            RbtiSurveySession.objects.select_related("rbti_type")
+            .filter(user=request.user, rbti_type__isnull=False)
+            .order_by("-created_at", "-id")
+        )
+        serializer = UserRbtiHistorySerializer(queryset, many=True)
+        return Response(
+            {
+                "count": len(serializer.data),
+                "results": serializer.data,
             },
             status=status.HTTP_200_OK,
         )

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useScrollToTop } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Book, SearchStackParamList } from '../../../navigation/types';
 import { getCurrentUserRbti } from '../../../api/rbti';
@@ -54,8 +55,10 @@ const RBTI_NAME_BY_CODE: Record<string, string> = {
 };
 
 export default function SearchScreen({ navigation }: Props) {
+  const listRef = useRef<FlatList<BookLike>>(null);
   const [recommendedBooks] = useState<BookLike[]>(mockRecommendedBooks);
   const [rbtiName, setRbtiName] = useState<string>('');
+  useScrollToTop(listRef);
 
   useEffect(() => {
     let mounted = true;
@@ -147,6 +150,7 @@ export default function SearchScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
+        ref={listRef}
         data={recommendedBooks}
         keyExtractor={(item, index) =>
           String(item.external_api_id ?? item.id ?? `${item.title}-${index}`)
