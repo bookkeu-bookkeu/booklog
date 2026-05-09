@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 
 from books.models import Book
+from analytics.services import analyze_review_and_update_user_rbti
 from reading.models import UserBook
 from .models import QuoteNote, Review, ReviewLike
 
@@ -14,7 +15,7 @@ class ReviewService:
         if user_book_id:
             user_book = get_object_or_404(UserBook, id=user_book_id, user=user, book=book)
 
-        return Review.objects.create(
+        review = Review.objects.create(
             user=user,
             book=book,
             user_book=user_book,
@@ -22,6 +23,8 @@ class ReviewService:
             content=content,
             visibility=visibility,
         )
+        analyze_review_and_update_user_rbti(review)
+        return review
 
     @staticmethod
     def update_review(*, review, rating=None, content=None, visibility=None):
