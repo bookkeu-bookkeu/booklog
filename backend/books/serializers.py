@@ -18,6 +18,10 @@ class ExternalBookItemSerializer(serializers.Serializer):
     price = serializers.IntegerField(required=False)
     sale_price = serializers.IntegerField(required=False)
     status = serializers.CharField(allow_blank=True, required=False)
+    description = serializers.CharField(allow_blank=True, required=False)
+    category = serializers.CharField(allow_blank=True, required=False)
+    kdc = serializers.CharField(allow_blank=True, required=False)
+    subject = serializers.CharField(allow_blank=True, required=False)
     is_in_library = serializers.BooleanField(required=False)
 
 

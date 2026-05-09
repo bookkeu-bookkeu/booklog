@@ -14,6 +14,7 @@ type Props = {
   publisher: string;
   isbn: string;
   publishedYear: string;
+  category: string;
   description: string;
   styles: any;
   onClose: () => void;
@@ -24,6 +25,7 @@ export default function InfoSheetModal({
   publisher,
   isbn,
   publishedYear,
+  category,
   description,
   styles,
   onClose,
@@ -86,6 +88,11 @@ export default function InfoSheetModal({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>출판 연도</Text>
               <Text style={styles.infoValue}>{publishedYear}</Text>
+            </View>
+
+            <View style={[styles.infoRow, { marginBottom: 0 }]}>
+              <Text style={styles.infoLabel}>분야</Text>
+              <Text style={styles.infoValue}>{category}</Text>
             </View>
           </View>
 

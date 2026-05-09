@@ -28,7 +28,9 @@ type RbtiAxis = {
   label: string;
   valueText: string;
   deltaText: string;
+  deltaDirection?: 'increase' | 'decrease';
   fillPercent: number; // 0 ~ 100
+  previousFillPercent?: number;
 };
 
 type HomeBookCardItem = LibraryBookCardItem & {
@@ -81,13 +83,72 @@ function getScore(value: number | undefined) {
   return clampPercent(typeof value === 'number' ? value : 50);
 }
 
+function getOptionalScore(value: number | null | undefined) {
+  return typeof value === 'number' ? clampPercent(value) : undefined;
+}
+
+function normalizeScorePair(leftScore: number, rightScore: number) {
+  const total = leftScore + rightScore;
+
+  if (total <= 0) {
+    return { leftScore: 50, rightScore: 50 };
+  }
+
+  const normalizedLeftScore = clampPercent((leftScore / total) * 100);
+  return {
+    leftScore: normalizedLeftScore,
+    rightScore: 100 - normalizedLeftScore,
+  };
+}
+
+function normalizeOptionalScorePair(
+  leftScore: number | null | undefined,
+  rightScore: number | null | undefined,
+) {
+  const normalizedLeftScore = getOptionalScore(leftScore);
+  const normalizedRightScore = getOptionalScore(rightScore);
+
+  if (typeof normalizedLeftScore !== 'number' || typeof normalizedRightScore !== 'number') {
+    return {
+      leftScore: normalizedLeftScore,
+      rightScore: normalizedRightScore,
+    };
+  }
+
+  return normalizeScorePair(normalizedLeftScore, normalizedRightScore);
+}
+
 function formatScoreDelta(delta: number | null | undefined) {
-  if (typeof delta !== 'number' || delta === 0) {
+  if (typeof delta !== 'number') {
     return '';
   }
 
+  if (delta === 0) {
+    return ' (-%)';
+  }
+
   const direction = delta > 0 ? '▲' : '▼';
-  return `(${Math.abs(delta)}%${direction})`;
+  return ` (${Math.abs(delta)}%${direction})`;
+}
+
+function getDeltaDirection(delta: number | null | undefined) {
+  if (typeof delta !== 'number' || delta === 0) {
+    return undefined;
+  }
+
+  return delta > 0 ? 'increase' : 'decrease';
+}
+
+function getScoreDelta(
+  current: number,
+  previous: number | null | undefined,
+  fallbackDelta: number | null | undefined,
+) {
+  if (typeof previous === 'number') {
+    return current - previous;
+  }
+
+  return fallbackDelta;
 }
 
 function buildRbtiAxes(
@@ -96,6 +157,7 @@ function buildRbtiAxes(
 ): RbtiAxis[] {
   const definitionsByAxis = new Map(axisDefinitions.map((definition) => [definition.axis, definition]));
   const rbtiCode = currentRbti.rbti_code?.trim().toUpperCase() ?? '';
+  const shouldShowDelta = currentRbti.source_type === 'ai_review';
 
   const axisConfigs = [
     {
@@ -106,6 +168,8 @@ function buildRbtiAxes(
       rightScore: getScore(currentRbti.immersion_score),
       leftDelta: currentRbti.score_changes?.analytic_score.delta,
       rightDelta: currentRbti.score_changes?.immersion_score.delta,
+      leftPrevious: currentRbti.score_changes?.analytic_score.previous,
+      rightPrevious: currentRbti.score_changes?.immersion_score.previous,
       fallbackLeftName: '수용형',
       fallbackRightName: '탐구형',
       fallbackLeftCode: 'R',
@@ -119,6 +183,8 @@ function buildRbtiAxes(
       rightScore: getScore(currentRbti.empathy_score),
       leftDelta: currentRbti.score_changes?.critical_score.delta,
       rightDelta: currentRbti.score_changes?.empathy_score.delta,
+      leftPrevious: currentRbti.score_changes?.critical_score.previous,
+      rightPrevious: currentRbti.score_changes?.empathy_score.previous,
       fallbackLeftName: '분석형',
       fallbackRightName: '공감형',
       fallbackLeftCode: 'A',
@@ -132,6 +198,8 @@ function buildRbtiAxes(
       rightScore: getScore(currentRbti.expansion_score),
       leftDelta: currentRbti.score_changes?.practical_score.delta,
       rightDelta: currentRbti.score_changes?.expansion_score.delta,
+      leftPrevious: currentRbti.score_changes?.practical_score.previous,
+      rightPrevious: currentRbti.score_changes?.expansion_score.previous,
       fallbackLeftName: '서사형',
       fallbackRightName: '문장형',
       fallbackLeftCode: 'N',
@@ -143,22 +211,29 @@ function buildRbtiAxes(
     const definition = definitionsByAxis.get(config.axis);
     const leftCode = definition?.left_code ?? config.fallbackLeftCode;
     const rightCode = definition?.right_code ?? config.fallbackRightCode;
+    const currentScores = normalizeScorePair(config.leftScore, config.rightScore);
+    const previousScores = normalizeOptionalScorePair(config.leftPrevious, config.rightPrevious);
     const selectedCode = rbtiCode[config.codeIndex];
     const isRightSelected = selectedCode
       ? selectedCode === rightCode
-      : config.rightScore > config.leftScore;
-    const score = isRightSelected ? config.rightScore : config.leftScore;
-    const delta = isRightSelected ? config.rightDelta : config.leftDelta;
+      : currentScores.rightScore >= 50;
+    const score = isRightSelected ? currentScores.rightScore : currentScores.leftScore;
+    const previous = isRightSelected ? previousScores.rightScore : previousScores.leftScore;
+    const fallbackDelta = isRightSelected ? config.rightDelta : config.leftDelta;
+    const delta = getScoreDelta(score, previous, fallbackDelta);
     const label = isRightSelected
       ? definition?.right_name ?? config.fallbackRightName
       : definition?.left_name ?? config.fallbackLeftName;
+    const deltaText = shouldShowDelta ? formatScoreDelta(delta) : '';
 
     return {
       id: config.id,
       label,
       valueText: `${score}%`,
-      deltaText: formatScoreDelta(delta),
+      deltaText,
+      deltaDirection: shouldShowDelta ? getDeltaDirection(delta) : undefined,
       fillPercent: score,
+      previousFillPercent: typeof previous === 'number' ? previous : undefined,
     };
   });
 }
@@ -324,6 +399,10 @@ export default function HomeScreen() {
 }
 
 function RbtiBar({ item }: { item: RbtiAxis }) {
+  const previousFillPercent = item.previousFillPercent;
+  const shouldShowDecreaseTrail =
+    typeof previousFillPercent === 'number' && previousFillPercent > item.fillPercent;
+
   return (
     <View style={styles.rbtiRow}>
       <View style={styles.rbtiTrack}>
@@ -332,6 +411,16 @@ function RbtiBar({ item }: { item: RbtiAxis }) {
         </View>
 
         <View style={styles.rbtiProgressTrack}>
+          {shouldShowDecreaseTrail && (
+            <View
+              style={[
+                styles.rbtiPreviousFill,
+                {
+                  width: `${previousFillPercent}%`,
+                },
+              ]}
+            />
+          )}
           <View
             style={[
               styles.rbtiFill,
@@ -342,7 +431,17 @@ function RbtiBar({ item }: { item: RbtiAxis }) {
           />
           <Text style={styles.rbtiValue}>
             {item.valueText}
-            {!!item.deltaText && <Text style={styles.rbtiDeltaValue}>{item.deltaText}</Text>}
+            {!!item.deltaText && (
+              <Text
+                style={[
+                  styles.rbtiDeltaValue,
+                  item.deltaDirection === 'increase' && styles.rbtiDeltaIncrease,
+                  item.deltaDirection === 'decrease' && styles.rbtiDeltaDecrease,
+                ]}
+              >
+                {item.deltaText}
+              </Text>
+            )}
           </Text>
         </View>
       </View>
@@ -453,8 +552,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   rbtiTrack: {
-    height: 28,
-    borderRadius: 14,
+    height: 32,
+    borderRadius: 16,
     flexDirection: 'row',
     overflow: 'hidden',
   },
@@ -468,6 +567,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff0db',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   rbtiFill: {
     position: 'absolute',
@@ -475,8 +575,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: '#ffce65',
-    borderTopRightRadius: 14,
-    borderBottomRightRadius: 14,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  rbtiPreviousFill: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: '#ffe2a1',
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
   rbtiLabel: {
     fontSize: 13,
@@ -491,7 +600,14 @@ const styles = StyleSheet.create({
     color: '#E67F1E',
   },
   rbtiDeltaValue: {
-    color: '#8B909B',
+    marginLeft: 2,
+    color: '#1F2025',
+  },
+  rbtiDeltaIncrease: {
+    color: '#D84B3F',
+  },
+  rbtiDeltaDecrease: {
+    color: '#3F6FD8',
   },
   rbtiEmptyText: {
     fontSize: 13,

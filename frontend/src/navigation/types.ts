@@ -21,6 +21,7 @@ export type SearchStackParamList = {
   };
   BookReviewCreate: {
     book?: Book;
+    reviewId?: number;
   };
   QuoteNote: {
     book?: Book;
@@ -61,6 +62,10 @@ export interface Book {
   price?: number;
   sale_price?: number;
   status?: string;
+  description?: string;
+  category?: string;
+  kdc?: string;
+  subject?: string;
   is_in_library?: boolean;
 }
 

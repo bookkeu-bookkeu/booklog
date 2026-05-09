@@ -25,6 +25,7 @@ type LibraryStackParamList = {
   };
   BookReviewCreate: {
     book?: Book;
+    reviewId?: number;
   };
   QuoteNote: {
     book?: Book;

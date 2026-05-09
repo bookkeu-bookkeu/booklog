@@ -58,7 +58,7 @@ export default function RbtiHistoryScreen() {
         ListHeaderComponent={(
           <View style={styles.header}>
             <Pressable style={styles.backButton} onPress={handleBackPress} hitSlop={10}>
-              <Ionicons name="chevron-back" size={30} color="#FEC54B" />
+              <Ionicons name="chevron-back" size={30} color="#F5B82E" />
             </Pressable>
 
             <Text style={styles.headerTitle}>RBTI 기록</Text>
@@ -70,7 +70,7 @@ export default function RbtiHistoryScreen() {
           <View style={styles.emptyWrap}>
             {isLoading ? (
               <>
-                <ActivityIndicator size="large" color="#FEC54B" />
+                <ActivityIndicator size="large" color="#F5B82E" />
                 <Text style={styles.emptyText}>RBTI 기록을 불러오는 중이에요.</Text>
               </>
             ) : loadError ? (
@@ -87,7 +87,7 @@ export default function RbtiHistoryScreen() {
 
 function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
   const sourceLabel = getHistorySourceLabel(item.source_type);
-  const scoreRows = buildHistoryScoreRows(item);
+  const scoreRows = buildHistoryScoreRows(item, item.source_type === 'ai_review');
 
   return (
     <View style={styles.card}>
@@ -95,7 +95,7 @@ function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
         <Ionicons
           name={item.source_type === 'ai_review' ? 'sparkles-outline' : 'clipboard-outline'}
           size={24}
-          color="#D89025"
+          color="#F5B82E"
         />
       </View>
 
@@ -106,11 +106,6 @@ function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
           {item.rbti_name}
           <Text style={styles.rbtiCodeText}> ({item.rbti_code})</Text>
         </Text>
-        {!!item.previous_rbti_name && (
-          <Text style={styles.previousText}>
-            이전 {item.previous_rbti_name} ({item.previous_rbti_code})에서 변경
-          </Text>
-        )}
 
         {scoreRows.length > 0 && (
           <View style={styles.scoreGrid}>
@@ -118,7 +113,18 @@ function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
               <View key={row.id} style={styles.scorePill}>
                 <Text style={styles.scoreLabel}>{row.label}</Text>
                 <Text style={styles.scoreValue}>
-                  {row.value}%{row.deltaText}
+                  {row.value}%
+                  {!!row.deltaText && (
+                    <Text
+                      style={[
+                        styles.scoreDeltaValue,
+                        row.deltaDirection === 'increase' && styles.scoreDeltaIncrease,
+                        row.deltaDirection === 'decrease' && styles.scoreDeltaDecrease,
+                      ]}
+                    >
+                      {row.deltaText}
+                    </Text>
+                  )}
                 </Text>
               </View>
             ))}
@@ -141,7 +147,7 @@ function getHistorySourceLabel(sourceType?: string) {
   return 'RBTI 검사';
 }
 
-function buildHistoryScoreRows(item: RbtiHistoryItem) {
+function buildHistoryScoreRows(item: RbtiHistoryItem, shouldShowDelta: boolean) {
   const rbtiCode = item.rbti_code?.trim().toUpperCase() ?? '';
   const rows = [
     {
@@ -179,19 +185,32 @@ function buildHistoryScoreRows(item: RbtiHistoryItem) {
       {
         ...row,
         value: row.value,
-        deltaText: formatScoreDelta(row.delta),
+        deltaText: shouldShowDelta ? formatScoreDelta(row.delta) : '',
+        deltaDirection: shouldShowDelta ? getDeltaDirection(row.delta) : undefined,
       },
     ];
   });
 }
 
 function formatScoreDelta(delta?: number | null) {
-  if (typeof delta !== 'number' || delta === 0) {
+  if (typeof delta !== 'number') {
     return '';
   }
 
+  if (delta === 0) {
+    return ' (-%)';
+  }
+
   const direction = delta > 0 ? '▲' : '▼';
-  return `(${Math.abs(delta)}%${direction})`;
+  return ` (${Math.abs(delta)}%${direction})`;
+}
+
+function getDeltaDirection(delta?: number | null) {
+  if (typeof delta !== 'number' || delta === 0) {
+    return undefined;
+  }
+
+  return delta > 0 ? 'increase' : 'decrease';
 }
 
 function formatRbtiDate(value: string) {
@@ -282,7 +301,7 @@ const styles = StyleSheet.create({
   sourceText: {
     fontSize: 12,
     lineHeight: 17,
-    color: '#D89025',
+    color: '#F5B82E',
     fontWeight: '800',
     marginBottom: 3,
   },
@@ -293,14 +312,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   rbtiCodeText: {
-    color: '#D89025',
-  },
-  previousText: {
-    marginTop: 3,
-    fontSize: 12,
-    lineHeight: 17,
-    color: '#7B7E87',
-    fontWeight: '600',
+    color: '#F5B82E',
   },
   scoreGrid: {
     marginTop: 10,
@@ -325,7 +337,17 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#D89025',
+    color: '#E67F1E',
+  },
+  scoreDeltaValue: {
+    marginLeft: 2,
+    color: '#1F2025',
+  },
+  scoreDeltaIncrease: {
+    color: '#D84B3F',
+  },
+  scoreDeltaDecrease: {
+    color: '#3F6FD8',
   },
   emptyWrap: {
     flex: 1,

@@ -22,6 +22,7 @@ export type ProfileStackParamList = {
   RbtiHistory: undefined;
   BookReviewCreate: {
     book?: import('../navigation/types').Book;
+    reviewId?: number;
   };
   Settings: undefined;
   RbtiSurvey: undefined;

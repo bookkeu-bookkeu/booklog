@@ -14,7 +14,6 @@ class UserBookService:
         started_at=None,
         finished_at=None,
         book_type=None,
-        page_count=None,
         is_favorite=False,
     ):
         book = get_object_or_404(Book, id=book_id)
@@ -28,7 +27,6 @@ class UserBookService:
                 "started_at": started_at,
                 "finished_at": finished_at,
                 "book_type": book_type,
-                "page_count": page_count,
                 "is_favorite": is_favorite,
             },
         )
@@ -41,8 +39,6 @@ class UserBookService:
                 user_book.finished_at = finished_at
             if book_type is not None:
                 user_book.book_type = book_type
-            if page_count is not None:
-                user_book.page_count = page_count
             user_book.is_favorite = is_favorite
             user_book.save()
 
@@ -56,7 +52,6 @@ class UserBookService:
         started_at=...,
         finished_at=...,
         book_type=...,
-        page_count=...,
         is_favorite=...,
     ):
         if shelf_code is not ...:
@@ -71,9 +66,6 @@ class UserBookService:
 
         if book_type is not ...:
             user_book.book_type = book_type
-
-        if page_count is not ...:
-            user_book.page_count = page_count
 
         if is_favorite is not ...:
             user_book.is_favorite = is_favorite

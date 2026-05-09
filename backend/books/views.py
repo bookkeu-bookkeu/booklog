@@ -6,8 +6,14 @@ from rest_framework.views import APIView
 from reading.models import UserBook
 
 from .serializers import BookImportRequestSerializer, ExternalBookSearchResponseSerializer
-from .services import BookImportService, KakaoBookAPIError, KakaoBookService
-from .utils import map_kakao_book_document
+from .services import (
+    BookImportService,
+    Data4LibraryAPIError,
+    Data4LibraryBookService,
+    KakaoBookAPIError,
+    KakaoBookService,
+)
+from .utils import map_kakao_book_document, merge_external_book_metadata
 
 
 class BookSearchAPIView(APIView):
@@ -162,8 +168,16 @@ class ExternalBookDetailAPIView(APIView):
         if selected is None:
             selected = documents[0]
 
+        mapped = map_kakao_book_document(selected)
+        try:
+            data4library_metadata = Data4LibraryBookService.search_by_isbn(
+                mapped.get("isbn13") or isbn
+            )
+        except Data4LibraryAPIError:
+            data4library_metadata = None
+
         return Response(
-            map_kakao_book_document(selected),
+            merge_external_book_metadata(mapped, data4library_metadata),
             status=status.HTTP_200_OK,
         )
 
@@ -193,6 +207,11 @@ class BookImportAPIView(APIView):
                 "isbn13": book.isbn13,
                 "title": book.title,
                 "publisher": book.publisher,
+                "contents": book.description,
+                "description": book.description,
+                "category": book.category,
+                "kdc": book.kdc,
+                "subject": book.subject,
                 "thumbnail_url": book.thumbnail_url,
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,

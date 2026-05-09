@@ -13,6 +13,7 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 raw_allowed_hosts = os.getenv('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(',') if host.strip()]
 KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
+DATA4LIBRARY_AUTH_KEY = os.getenv("DATA4LIBRARY_AUTH_KEY")
 
 # 앱
 INSTALLED_APPS = [

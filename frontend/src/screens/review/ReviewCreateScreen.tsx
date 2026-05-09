@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { CommonActions } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SearchStackParamList } from '../../navigation/types';
 import {
@@ -26,7 +27,14 @@ import BottomActionButton from '../../components/BottomActionButton';
 type Props = NativeStackScreenProps<SearchStackParamList, 'BookReviewCreate'>;
 
 const STAR_COUNT = 5;
-const REVIEW_INPUT_MIN_HEIGHT = 112;
+const REVIEW_INPUT_LINE_HEIGHT = 20;
+const REVIEW_INPUT_VERTICAL_PADDING = 32;
+const REVIEW_INPUT_MIN_LINES = 2;
+const REVIEW_INPUT_MAX_LINES = 5;
+const REVIEW_INPUT_MIN_HEIGHT =
+  REVIEW_INPUT_LINE_HEIGHT * REVIEW_INPUT_MIN_LINES + REVIEW_INPUT_VERTICAL_PADDING;
+const REVIEW_INPUT_MAX_HEIGHT =
+  REVIEW_INPUT_LINE_HEIGHT * REVIEW_INPUT_MAX_LINES + REVIEW_INPUT_VERTICAL_PADDING;
 
 export default function ReviewCreateScreen({ navigation, route }: Props) {
   const book = route?.params?.book;
@@ -35,6 +43,7 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
   const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const [content, setContent] = useState('');
   const [contentHeight, setContentHeight] = useState(REVIEW_INPUT_MIN_HEIGHT);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<number | null>(null);
 
@@ -55,6 +64,8 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
 
     return '';
   }, [book?.thumbnail]);
+  const reviewInputHeight = Math.min(contentHeight, REVIEW_INPUT_MAX_HEIGHT);
+  const isReviewInputScrollable = contentHeight > REVIEW_INPUT_MAX_HEIGHT;
 
   const updateRatingFromX = (x: number) => {
     if (!starRowWidth) {
@@ -107,8 +118,59 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
 
   const handleBackPress = () => {
     if (navigation.canGoBack()) {
-      navigation.pop();
+      navigation.goBack();
+      return;
     }
+
+    // Fallback: clear this nested stack before returning to Home tab.
+    try {
+      const currentState = navigation.getState();
+      const rootRouteName = currentState.routeNames[0];
+      if (rootRouteName) {
+        navigation.dispatch(
+          {
+            ...CommonActions.reset({
+              index: 0,
+              routes: [{ name: rootRouteName }],
+            }),
+            target: currentState.key,
+          }
+        );
+      }
+
+      const parentNavigation = navigation.getParent();
+      if (parentNavigation) {
+        (
+          parentNavigation as {
+            navigate: (screen: string, params?: { screen?: string }) => void;
+          }
+        ).navigate('HomeTab', { screen: 'HomeMain' });
+        return;
+      }
+
+      navigation.goBack();
+      return;
+    } catch (err) {
+      // As a last resort, call goBack to let the navigator handle it
+      navigation.goBack();
+    }
+  };
+
+  const handleDeletePress = () => {
+    if (!editingReviewId || isSaving) {
+      return;
+    }
+
+    Alert.alert('알림', '리뷰를 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () => {
+          void handleDeleteReview(editingReviewId);
+        },
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -131,7 +193,9 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
         setEditingReviewId(review.id);
         setRating(review.rating);
         setVisibility(review.visibility);
-        setContent(review.content ?? '');
+        const initialContent = review.content ?? '';
+        setContent(initialContent);
+        setHasUserTyped(Boolean(initialContent && initialContent.length > 0));
       } catch (error) {
         console.log('내 리뷰 조회 실패', error);
       }
@@ -259,12 +323,25 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
 
           <Text style={styles.headerTitle}>내 리뷰</Text>
 
-          <View style={styles.headerRightSpace} />
+          {editingReviewId ? (
+            <Pressable
+              hitSlop={12}
+              style={styles.deleteButton}
+              onPress={handleDeletePress}
+              disabled={isSaving}
+            >
+              <Ionicons name="trash-outline" size={24} color="#FEC54B" />
+            </Pressable>
+          ) : (
+            <View style={styles.headerRightSpace} />
+          )}
         </View>
 
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
           showsVerticalScrollIndicator={false}
         >
             <View style={styles.bookCard}>
@@ -355,17 +432,32 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
 
             <TextInput
               value={content}
-              onChangeText={setContent}
-              placeholder="인상깊은 구절을 자유롭게 작성해보세요."
+              onChangeText={(text) => {
+                setContent(text);
+                if (!hasUserTyped && text.length > 0) {
+                  setHasUserTyped(true);
+                }
+                if (hasUserTyped && text.length === 0) {
+                  setHasUserTyped(false);
+                  setContentHeight(REVIEW_INPUT_MIN_HEIGHT);
+                }
+              }}
+              placeholder="이 책에 대한 나의 생각을 남겨보세요."
               placeholderTextColor="#A4A7B0"
               multiline
               textAlignVertical="top"
-              scrollEnabled={false}
-              style={[styles.reviewInput, { height: contentHeight }]}
+              scrollEnabled={isReviewInputScrollable}
+              style={[styles.reviewInput, { height: reviewInputHeight }]}
               onContentSizeChange={(e) => {
+                if (!hasUserTyped && content.trim().length === 0) {
+                  return;
+                }
+
+                const nextContentHeight =
+                  e.nativeEvent.contentSize.height + REVIEW_INPUT_VERTICAL_PADDING;
                 const measuredHeight = Math.max(
                   REVIEW_INPUT_MIN_HEIGHT,
-                  e.nativeEvent.contentSize.height
+                  nextContentHeight
                 );
                 setContentHeight((prev) => (prev === measuredHeight ? prev : measuredHeight));
               }}
@@ -418,6 +510,12 @@ const styles = StyleSheet.create({
   headerRightSpace: {
     width: 36,
     height: 36,
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -504,7 +602,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: REVIEW_INPUT_LINE_HEIGHT,
     color: '#24262B',
   },
   footer: {

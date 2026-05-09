@@ -23,6 +23,38 @@ import SearchNavigator from './SearchNavigator';
 
 const Tab = createBottomTabNavigator();
 
+type NestedRouteState = {
+  index?: number;
+  routes?: Array<{ name?: string }>;
+};
+
+type RouteWithNestedTarget = {
+  state?: NestedRouteState;
+  params?: {
+    screen?: string;
+  };
+};
+
+const HIDDEN_TAB_ROUTES = new Set([
+  'BookDetail',
+  'BookReview',
+  'BookReviewCreate',
+  'QuoteNote',
+  'QuoteNoteBookSelect',
+  'QuoteNoteCreate',
+  'RbtiSurvey',
+  'RbtiHistory',
+  'Settings',
+]);
+
+function getNestedRouteName(route: RouteWithNestedTarget) {
+  const nestedState = route.state;
+  const focusedRouteName =
+    nestedState?.routes?.[nestedState.index ?? 0]?.name;
+
+  return focusedRouteName ?? route.params?.screen;
+}
+
 type TabItemProps = {
   label: string;
   focused: boolean;
@@ -49,75 +81,11 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { width } = useWindowDimensions();
   const activeIndex = state.index;
   const activeRoute = state.routes[activeIndex];
-
-  const nestedSearchState =
-    activeRoute.name === 'SearchTab'
-      ? (activeRoute.state as
-          | {
-              index?: number;
-              routes?: Array<{ name?: string }>;
-            }
-          | undefined)
-      : undefined;
-  const focusedSearchRouteName =
-    nestedSearchState?.routes?.[nestedSearchState.index ?? 0]?.name;
-  const nestedHomeState =
-    activeRoute.name === 'HomeTab'
-      ? (activeRoute.state as
-          | {
-              index?: number;
-              routes?: Array<{ name?: string }>;
-            }
-          | undefined)
-      : undefined;
-  const focusedHomeRouteName =
-    nestedHomeState?.routes?.[nestedHomeState.index ?? 0]?.name;
-  const nestedLibraryState =
-    activeRoute.name === 'LibraryTab'
-      ? (activeRoute.state as
-          | {
-              index?: number;
-              routes?: Array<{ name?: string }>;
-            }
-          | undefined)
-      : undefined;
-  const focusedLibraryRouteName =
-    nestedLibraryState?.routes?.[nestedLibraryState.index ?? 0]?.name;
-  const nestedProfileState =
-    activeRoute.name === 'ProfileTab'
-      ? (activeRoute.state as
-          | {
-              index?: number;
-              routes?: Array<{ name?: string }>;
-            }
-          | undefined)
-      : undefined;
-  const focusedProfileRouteName =
-    nestedProfileState?.routes?.[nestedProfileState.index ?? 0]?.name;
+  const focusedRouteName = getNestedRouteName(
+    activeRoute as RouteWithNestedTarget,
+  );
   const shouldHideTabBar =
-    focusedHomeRouteName === 'BookDetail' ||
-    focusedHomeRouteName === 'BookReview' ||
-    focusedHomeRouteName === 'BookReviewCreate' ||
-    focusedHomeRouteName === 'QuoteNote' ||
-    focusedHomeRouteName === 'QuoteNoteBookSelect' ||
-    focusedHomeRouteName === 'QuoteNoteCreate' ||
-    focusedSearchRouteName === 'BookDetail' ||
-    focusedSearchRouteName === 'BookReview' ||
-    focusedSearchRouteName === 'BookReviewCreate' ||
-    focusedSearchRouteName === 'QuoteNote' ||
-    focusedSearchRouteName === 'QuoteNoteBookSelect' ||
-    focusedSearchRouteName === 'QuoteNoteCreate' ||
-    focusedLibraryRouteName === 'BookDetail' ||
-    focusedLibraryRouteName === 'BookReview' ||
-    focusedLibraryRouteName === 'BookReviewCreate' ||
-    focusedLibraryRouteName === 'QuoteNote' ||
-    focusedLibraryRouteName === 'QuoteNoteBookSelect' ||
-    focusedLibraryRouteName === 'QuoteNoteCreate' ||
-    focusedProfileRouteName === 'RbtiSurvey' ||
-    focusedProfileRouteName === 'RbtiHistory' ||
-    focusedProfileRouteName === 'BookReviewCreate' ||
-    focusedProfileRouteName === 'QuoteNote' ||
-    focusedProfileRouteName === 'Settings';
+    focusedRouteName !== undefined && HIDDEN_TAB_ROUTES.has(focusedRouteName);
 
   const homeFocused = activeIndex === 0;
   const searchFocused = activeIndex === 1;

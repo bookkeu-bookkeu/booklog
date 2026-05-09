@@ -19,6 +19,7 @@ type HomeStackParamList = {
   };
   BookReviewCreate: {
     book?: Book;
+    reviewId?: number;
   };
   QuoteNote: {
     book?: Book;

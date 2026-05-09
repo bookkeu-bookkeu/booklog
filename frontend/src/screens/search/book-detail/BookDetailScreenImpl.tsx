@@ -78,6 +78,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
 
   const [infoSheetVisible, setInfoSheetVisible] = useState(false);
   const [bookDescriptionText, setBookDescriptionText] = useState<string>('');
+  const [bookMetadata, setBookMetadata] = useState<Partial<Book>>({});
   const [selectedRbtiCode, setSelectedRbtiCode] = useState<string>('');
   const [previewReviews, setPreviewReviews] = useState<ReviewItem[]>([]);
   const [userLibraryBook, setUserLibraryBook] = useState<UserLibraryBook | null>(null);
@@ -105,6 +106,10 @@ export default function BookDetailScreen({ navigation, route }: Props) {
   const publisher = getPublisherText(book);
   const isbn = getIsbnText(book);
   const publishedYear = getPublishedYear((book as any).published_date);
+  const category = getCategoryText(
+    bookMetadata.category ?? (book as any).category,
+    bookMetadata.kdc ?? (book as any).kdc
+  );
   const description = useMemo(() => {
     if (bookDescriptionText.trim()) {
       return bookDescriptionText.trim();
@@ -193,6 +198,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
       try {
         const externalDetail = await getExternalBookDetailByIsbn(isbnRaw);
         if (mounted) {
+          setBookMetadata(externalDetail);
           setBookDescriptionText(
             typeof externalDetail.contents === 'string' ? externalDetail.contents : ''
           );
@@ -205,6 +211,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
         const importedBook = await importBookByIsbn13(isbnRaw);
         if (mounted) {
           setImportedBookId(importedBook.id);
+          setBookMetadata((prev) => mergeBookMetadata(prev, importedBook));
         }
         await fetchQuoteNotes(importedBook.id);
         await fetchMyReview(importedBook.id);
@@ -268,10 +275,6 @@ export default function BookDetailScreen({ navigation, route }: Props) {
       setBookType(userLibraryBook.book_type);
     }
 
-    if (typeof userLibraryBook?.page_count === 'number') {
-    } else {
-      // 남은 초기화 로직 없음
-    }
   }, [book, userLibraryBook]);
 
 
@@ -701,9 +704,14 @@ export default function BookDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.infoValue}>{isbn}</Text>
               </View>
 
-              <View style={[styles.infoRow, { marginBottom: 0 }]}>
+              <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>출판 연도</Text>
                 <Text style={styles.infoValue}>{publishedYear}</Text>
+              </View>
+
+              <View style={[styles.infoRow, { marginBottom: 0 }]}>
+                <Text style={styles.infoLabel}>분야</Text>
+                <Text style={styles.infoValue}>{category}</Text>
               </View>
             </View>
 
@@ -780,6 +788,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
         publisher={publisher}
         isbn={isbn}
         publishedYear={publishedYear}
+        category={category}
         description={description}
         styles={styles}
         onClose={() => setInfoSheetVisible(false)}
@@ -917,4 +926,41 @@ function toApiDateString(label: string): string | null {
 
 function normalizeIsbn(value?: string | null) {
   return (value ?? '').replace(/[^0-9Xx]/g, '').toUpperCase();
+}
+
+function mergeBookMetadata(
+  current: Partial<Book>,
+  incoming: Partial<Book> & { id?: number }
+): Partial<Book> {
+  const merged = { ...current, ...incoming };
+  const keepCurrentWhenIncomingEmpty: Array<keyof Book> = [
+    'contents',
+    'description',
+    'category',
+    'kdc',
+    'subject',
+  ];
+
+  keepCurrentWhenIncomingEmpty.forEach((field) => {
+    const value = incoming[field];
+    const isEmptyString = typeof value === 'string' && !value.trim();
+
+    if (value === null || value === undefined || isEmptyString) {
+      (merged as any)[field] = current[field];
+    }
+  });
+
+  return merged;
+}
+
+function getCategoryText(category?: string | null, kdc?: string | null) {
+  if (typeof category === 'string' && category.trim()) {
+    return category.trim();
+  }
+
+  if (typeof kdc === 'string' && kdc.trim()) {
+    return `KDC ${kdc.trim()}`;
+  }
+
+  return '정보 없음';
 }

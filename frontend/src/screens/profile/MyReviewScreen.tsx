@@ -143,6 +143,7 @@ function MyReviewCard({ review }: { review: ReviewItem }) {
         published_at: '',
         thumbnail: review.book_thumbnail_url || '',
       },
+      reviewId: review.id,
     });
   };
 

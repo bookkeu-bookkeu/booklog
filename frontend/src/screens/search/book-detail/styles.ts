@@ -372,7 +372,7 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(20, 24, 32, 0.42)',
   },
   infoSheet: {
-    height: '68%',
+    height: '82%',
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

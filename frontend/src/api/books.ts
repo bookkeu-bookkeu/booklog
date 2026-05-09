@@ -16,7 +16,6 @@ export interface UserLibraryBook {
   started_at: string | null;
   finished_at: string | null;
   book_type: string | null;
-  page_count: number | null;
   is_favorite: boolean;
   created_at: string;
   updated_at: string;
@@ -27,7 +26,6 @@ export interface UpdateLibraryBookPayload {
   started_at?: string | null;
   finished_at?: string | null;
   book_type?: string | null;
-  page_count?: number | null;
   is_favorite?: boolean;
 }
 
@@ -82,6 +80,11 @@ export interface ImportedBookResponse {
   isbn13: string;
   title: string;
   publisher: string;
+  contents?: string;
+  description?: string;
+  category?: string;
+  kdc?: string;
+  subject?: string;
   thumbnail_url: string;
 }
 
