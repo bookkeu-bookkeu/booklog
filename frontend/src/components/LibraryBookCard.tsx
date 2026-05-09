@@ -15,12 +15,12 @@ type Props = {
 };
 
 export default function LibraryBookCard({ book, onPress }: Props) {
-  const hasThumbnail = !!book.thumbnail?.trim();
+  const thumbnailUri = book.thumbnail?.trim() || '';
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      {hasThumbnail ? (
-        <Image source={{ uri: book.thumbnail }} style={styles.thumbnail} resizeMode="cover" />
+      {thumbnailUri ? (
+        <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} resizeMode="cover" />
       ) : (
         <View style={styles.thumbnailPlaceholder}>
           <Ionicons name="image-outline" size={28} color="#FFD7A2" />
