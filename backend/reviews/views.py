@@ -52,7 +52,7 @@ class ReviewListCreateAPIView(APIView):
                 user__rbti_snapshots__rbti_type__code__iexact=code,
             ).distinct()
 
-        queryset = queryset.order_by("-created_at")
+        queryset = queryset.order_by("-like_count", "-created_at", "-id")
 
         serializer = ReviewListSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

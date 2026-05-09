@@ -32,6 +32,25 @@ type ReviewFilter = {
 
 const DEFAULT_FILTERS: ReviewFilter[] = [{ id: 'all', label: '전체' }];
 
+const sortReviewsByLikesAndRecent = (items: ReviewItem[]) => {
+  return [...items].sort((a, b) => {
+    const likeDiff = b.like_count - a.like_count;
+
+    if (likeDiff !== 0) {
+      return likeDiff;
+    }
+
+    const createdDiff =
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return b.id - a.id;
+  });
+};
+
 export default function BookReviewScreen({ navigation, route }: Props) {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [bookId, setBookId] = useState<number | null>(null);
@@ -209,7 +228,7 @@ export default function BookReviewScreen({ navigation, route }: Props) {
         );
 
         if (mounted) {
-          setReviews(reviewResponse);
+          setReviews(sortReviewsByLikesAndRecent(reviewResponse));
         }
       } catch (error) {
         console.log('리뷰 목록 조회 실패', error);
@@ -242,7 +261,7 @@ export default function BookReviewScreen({ navigation, route }: Props) {
     setLikedReviewIds((prev) => (
       wasLiked ? prev.filter((id) => id !== reviewId) : [...prev, reviewId]
     ));
-    setReviews((prev) => (
+    setReviews((prev) => sortReviewsByLikesAndRecent(
       prev.map((review) => (
         review.id === reviewId
           ? {
@@ -271,7 +290,7 @@ export default function BookReviewScreen({ navigation, route }: Props) {
 
         return prev;
       });
-      setReviews((prev) => (
+      setReviews((prev) => sortReviewsByLikesAndRecent(
         prev.map((review) => (
           review.id === reviewId
             ? { ...review, like_count: response.like_count }
@@ -285,7 +304,7 @@ export default function BookReviewScreen({ navigation, route }: Props) {
           ? (prev.includes(reviewId) ? prev : [...prev, reviewId])
           : prev.filter((id) => id !== reviewId)
       ));
-      setReviews((prev) => (
+      setReviews((prev) => sortReviewsByLikesAndRecent(
         prev.map((review) => (
           review.id === reviewId
             ? {
