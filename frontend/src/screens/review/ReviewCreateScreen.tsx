@@ -42,7 +42,6 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
   const [starRowWidth, setStarRowWidth] = useState(0);
   const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const [content, setContent] = useState('');
-  const [contentHeight, setContentHeight] = useState(REVIEW_INPUT_MIN_HEIGHT);
   const [hasUserTyped, setHasUserTyped] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<number | null>(null);
@@ -64,8 +63,7 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
 
     return '';
   }, [book?.thumbnail]);
-  const reviewInputHeight = Math.min(contentHeight, REVIEW_INPUT_MAX_HEIGHT);
-  const isReviewInputScrollable = contentHeight > REVIEW_INPUT_MAX_HEIGHT;
+  const reviewInputHeight = REVIEW_INPUT_MAX_HEIGHT;
 
   const updateRatingFromX = (x: number) => {
     if (!starRowWidth) {
@@ -82,11 +80,6 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
   };
 
   const resolveBookId = async () => {
-    const rawExternalId = `${book?.external_api_id ?? ''}`.trim();
-    if (/^\d+$/.test(rawExternalId)) {
-      return Number(rawExternalId);
-    }
-
     const isbn13 =
       typeof book?.isbn13 === 'string' && book.isbn13.trim()
         ? book.isbn13.trim()
@@ -439,28 +432,14 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
                 }
                 if (hasUserTyped && text.length === 0) {
                   setHasUserTyped(false);
-                  setContentHeight(REVIEW_INPUT_MIN_HEIGHT);
                 }
               }}
               placeholder="이 책에 대한 나의 생각을 남겨보세요."
               placeholderTextColor="#A4A7B0"
               multiline
               textAlignVertical="top"
-              scrollEnabled={isReviewInputScrollable}
+              scrollEnabled
               style={[styles.reviewInput, { height: reviewInputHeight }]}
-              onContentSizeChange={(e) => {
-                if (!hasUserTyped && content.trim().length === 0) {
-                  return;
-                }
-
-                const nextContentHeight =
-                  e.nativeEvent.contentSize.height + REVIEW_INPUT_VERTICAL_PADDING;
-                const measuredHeight = Math.max(
-                  REVIEW_INPUT_MIN_HEIGHT,
-                  nextContentHeight
-                );
-                setContentHeight((prev) => (prev === measuredHeight ? prev : measuredHeight));
-              }}
             />
           </ScrollView>
 

@@ -16,6 +16,14 @@ export interface ReviewItem {
   updated_at: string;
 }
 
+export interface ReviewLikeResponse {
+  liked: boolean;
+  created?: boolean;
+  deleted?: boolean;
+  like_count: number;
+  detail?: string;
+}
+
 export interface QuoteNoteItem {
   id: number;
   user_nickname: string;
@@ -95,6 +103,16 @@ export async function getBookReviews(
 export async function getLikedReviews(): Promise<ReviewItem[]> {
   const response = await api.get<ReviewItem[]>('/reviews/liked/');
   return response.data ?? [];
+}
+
+export async function likeReview(reviewId: number): Promise<ReviewLikeResponse> {
+  const response = await api.post<ReviewLikeResponse>(`/reviews/${reviewId}/like/`);
+  return response.data;
+}
+
+export async function unlikeReview(reviewId: number): Promise<ReviewLikeResponse> {
+  const response = await api.delete<ReviewLikeResponse>(`/reviews/${reviewId}/like/`);
+  return response.data;
 }
 
 export async function createReview(payload: CreateReviewPayload): Promise<ReviewItem> {

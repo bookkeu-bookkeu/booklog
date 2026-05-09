@@ -15,8 +15,11 @@ import {
   BookRbtiFilterOption,
   getBookRbtiFilters,
   getBookReviews,
+  getLikedReviews,
   GetBookReviewsOptions,
+  likeReview,
   ReviewItem,
+  unlikeReview,
 } from '../../api/reviews';
 
 type Props = NativeStackScreenProps<SearchStackParamList, 'BookReview'>;
@@ -33,6 +36,8 @@ export default function BookReviewScreen({ navigation, route }: Props) {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [bookId, setBookId] = useState<number | null>(null);
   const [myReviewIds, setMyReviewIds] = useState<number[]>([]);
+  const [likedReviewIds, setLikedReviewIds] = useState<number[]>([]);
+  const [pendingLikeIds, setPendingLikeIds] = useState<number[]>([]);
   const [filters, setFilters] = useState<ReviewFilter[]>(DEFAULT_FILTERS);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -137,6 +142,30 @@ export default function BookReviewScreen({ navigation, route }: Props) {
   useEffect(() => {
     let mounted = true;
 
+    const fetchLikedReviewIds = async () => {
+      try {
+        const likedReviews = await getLikedReviews();
+        if (mounted) {
+          setLikedReviewIds(likedReviews.map((item) => item.id));
+        }
+      } catch (error) {
+        console.log('좋아요한 리뷰 목록 조회 실패', error);
+        if (mounted) {
+          setLikedReviewIds([]);
+        }
+      }
+    };
+
+    void fetchLikedReviewIds();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
     const fetchMyReviews = async () => {
       if (!bookId) {
         return;
@@ -201,6 +230,75 @@ export default function BookReviewScreen({ navigation, route }: Props) {
       mounted = false;
     };
   }, [bookId, selectedRbtiCode]);
+
+  const handleToggleLike = async (reviewId: number) => {
+    if (myReviewIds.includes(reviewId) || pendingLikeIds.includes(reviewId)) {
+      return;
+    }
+
+    const wasLiked = likedReviewIds.includes(reviewId);
+
+    setPendingLikeIds((prev) => [...prev, reviewId]);
+    setLikedReviewIds((prev) => (
+      wasLiked ? prev.filter((id) => id !== reviewId) : [...prev, reviewId]
+    ));
+    setReviews((prev) => (
+      prev.map((review) => (
+        review.id === reviewId
+          ? {
+              ...review,
+              like_count: Math.max(review.like_count + (wasLiked ? -1 : 1), 0),
+            }
+          : review
+      ))
+    ));
+
+    try {
+      const response = wasLiked
+        ? await unlikeReview(reviewId)
+        : await likeReview(reviewId);
+
+      setLikedReviewIds((prev) => {
+        const hasId = prev.includes(reviewId);
+
+        if (response.liked && !hasId) {
+          return [...prev, reviewId];
+        }
+
+        if (!response.liked && hasId) {
+          return prev.filter((id) => id !== reviewId);
+        }
+
+        return prev;
+      });
+      setReviews((prev) => (
+        prev.map((review) => (
+          review.id === reviewId
+            ? { ...review, like_count: response.like_count }
+            : review
+        ))
+      ));
+    } catch (error) {
+      console.log('리뷰 좋아요 처리 실패', error);
+      setLikedReviewIds((prev) => (
+        wasLiked
+          ? (prev.includes(reviewId) ? prev : [...prev, reviewId])
+          : prev.filter((id) => id !== reviewId)
+      ));
+      setReviews((prev) => (
+        prev.map((review) => (
+          review.id === reviewId
+            ? {
+                ...review,
+                like_count: Math.max(review.like_count + (wasLiked ? 1 : -1), 0),
+              }
+            : review
+        ))
+      ));
+    } finally {
+      setPendingLikeIds((prev) => prev.filter((id) => id !== reviewId));
+    }
+  };
 
   const headerTitle = route.params?.book?.title?.trim() || '책 리뷰';
 
@@ -273,7 +371,10 @@ export default function BookReviewScreen({ navigation, route }: Props) {
           <ReviewCard
             item={item}
             isMine={myReviewIds.includes(item.id)}
+            isLiked={likedReviewIds.includes(item.id)}
+            isLikePending={pendingLikeIds.includes(item.id)}
             onPressMine={() => navigation.navigate('BookReviewCreate', { book: route.params?.book })}
+            onToggleLike={() => handleToggleLike(item.id)}
           />
         )}
         ListHeaderComponent={renderHeader}
@@ -288,11 +389,17 @@ export default function BookReviewScreen({ navigation, route }: Props) {
 function ReviewCard({
   item,
   isMine,
+  isLiked,
+  isLikePending,
   onPressMine,
+  onToggleLike,
 }: {
   item: ReviewItem;
   isMine: boolean;
+  isLiked: boolean;
+  isLikePending: boolean;
   onPressMine: () => void;
+  onToggleLike: () => void;
 }) {
   const Wrapper = isMine ? Pressable : View;
 
@@ -306,6 +413,30 @@ function ReviewCard({
         <Text style={styles.nickname}>{item.user_nickname || '닉네임'}</Text>
         <Text style={styles.reviewContent}>{item.content}</Text>
       </View>
+
+      {!isMine ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.likeButton,
+            isLiked && styles.likeButtonActive,
+            pressed && styles.likeButtonPressed,
+          ]}
+          onPress={onToggleLike}
+          disabled={isLikePending}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={isLiked ? '리뷰 좋아요 취소' : '리뷰 좋아요'}
+        >
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={18}
+            color={isLiked ? '#FFFFFF' : '#F26B6B'}
+          />
+          <Text style={[styles.likeCount, isLiked && styles.likeCountActive]}>
+            {item.like_count}
+          </Text>
+        </Pressable>
+      ) : null}
     </Wrapper>
   );
 }
@@ -387,6 +518,7 @@ const styles = StyleSheet.create({
   },
   reviewTextArea: {
     flex: 1,
+    paddingRight: 10,
   },
   nickname: {
     fontSize: 14,
@@ -398,6 +530,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: '#666A73',
+  },
+  likeButton: {
+    minWidth: 48,
+    height: 30,
+    borderRadius: 15,
+    paddingHorizontal: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#FFF2F2',
+    borderWidth: 1,
+    borderColor: '#FFD8D8',
+  },
+  likeButtonActive: {
+    backgroundColor: '#F26B6B',
+    borderColor: '#F26B6B',
+  },
+  likeButtonPressed: {
+    opacity: 0.75,
+  },
+  likeCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F26B6B',
+  },
+  likeCountActive: {
+    color: '#FFFFFF',
   },
   emptyContainer: {
     paddingTop: 40,
