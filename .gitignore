@@ -31,3 +31,10 @@ __pycache__/
 db.sqlite3
 .env
 *.yml
+
+# --- ai models ---
+ai/models/
+*.safetensors
+*.bin
+*.pt
+*.pth
