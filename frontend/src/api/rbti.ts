@@ -17,6 +17,9 @@ export interface CurrentUserRbti {
   source_type?: string;
   source_ref_id?: number | null;
   created_at?: string;
+  previous_rbti_code?: string | null;
+  previous_rbti_name?: string | null;
+  score_changes?: RbtiScoreChanges;
 }
 
 export interface CurrentUserRbtiResponse {
@@ -75,8 +78,35 @@ export interface RbtiHistoryItem {
   id: number;
   rbti_code: string;
   rbti_name: string;
+  analytic_score?: number;
+  immersion_score?: number;
+  critical_score?: number;
+  empathy_score?: number;
+  practical_score?: number;
+  expansion_score?: number;
+  source_type?: string;
+  source_ref_id?: number | null;
   created_at: string;
+  previous_rbti_code?: string | null;
+  previous_rbti_name?: string | null;
+  score_changes?: RbtiScoreChanges;
 }
+
+export interface RbtiScoreChange {
+  current: number;
+  previous: number | null;
+  delta: number | null;
+}
+
+export type RbtiScoreChanges = Record<
+  | 'analytic_score'
+  | 'immersion_score'
+  | 'critical_score'
+  | 'empathy_score'
+  | 'practical_score'
+  | 'expansion_score',
+  RbtiScoreChange
+>;
 
 export interface RbtiHistoryResponse {
   count: number;

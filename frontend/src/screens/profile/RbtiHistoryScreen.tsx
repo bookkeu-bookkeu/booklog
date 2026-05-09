@@ -86,21 +86,112 @@ export default function RbtiHistoryScreen() {
 }
 
 function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
+  const sourceLabel = getHistorySourceLabel(item.source_type);
+  const scoreRows = buildHistoryScoreRows(item);
+
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
-        <Ionicons name="clipboard-outline" size={24} color="#D89025" />
+        <Ionicons
+          name={item.source_type === 'ai_review' ? 'sparkles-outline' : 'clipboard-outline'}
+          size={24}
+          color="#D89025"
+        />
       </View>
 
       <View style={styles.cardTextWrap}>
         <Text style={styles.dateText}>{formatRbtiDate(item.created_at)}</Text>
+        <Text style={styles.sourceText}>{sourceLabel}</Text>
         <Text style={styles.rbtiText}>
           {item.rbti_name}
           <Text style={styles.rbtiCodeText}> ({item.rbti_code})</Text>
         </Text>
+        {!!item.previous_rbti_name && (
+          <Text style={styles.previousText}>
+            이전 {item.previous_rbti_name} ({item.previous_rbti_code})에서 변경
+          </Text>
+        )}
+
+        {scoreRows.length > 0 && (
+          <View style={styles.scoreGrid}>
+            {scoreRows.map((row) => (
+              <View key={row.id} style={styles.scorePill}>
+                <Text style={styles.scoreLabel}>{row.label}</Text>
+                <Text style={styles.scoreValue}>
+                  {row.value}%{row.deltaText}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
+}
+
+function getHistorySourceLabel(sourceType?: string) {
+  if (sourceType === 'ai_review') {
+    return '리뷰로 보정';
+  }
+
+  if (sourceType === 'manual_reset') {
+    return '관리자 설정';
+  }
+
+  return 'RBTI 검사';
+}
+
+function buildHistoryScoreRows(item: RbtiHistoryItem) {
+  const rbtiCode = item.rbti_code?.trim().toUpperCase() ?? '';
+  const rows = [
+    {
+      id: 'axis-1',
+      label: rbtiCode[0] === 'I' ? '탐구형' : '수용형',
+      value: rbtiCode[0] === 'I' ? item.immersion_score : item.analytic_score,
+      delta: rbtiCode[0] === 'I'
+        ? item.score_changes?.immersion_score.delta
+        : item.score_changes?.analytic_score.delta,
+    },
+    {
+      id: 'axis-2',
+      label: rbtiCode[1] === 'E' ? '공감형' : '분석형',
+      value: rbtiCode[1] === 'E' ? item.empathy_score : item.critical_score,
+      delta: rbtiCode[1] === 'E'
+        ? item.score_changes?.empathy_score.delta
+        : item.score_changes?.critical_score.delta,
+    },
+    {
+      id: 'axis-3',
+      label: rbtiCode[2] === 'S' ? '문장형' : '서사형',
+      value: rbtiCode[2] === 'S' ? item.expansion_score : item.practical_score,
+      delta: rbtiCode[2] === 'S'
+        ? item.score_changes?.expansion_score.delta
+        : item.score_changes?.practical_score.delta,
+    },
+  ];
+
+  return rows.flatMap((row) => {
+    if (typeof row.value !== 'number') {
+      return [];
+    }
+
+    return [
+      {
+        ...row,
+        value: row.value,
+        deltaText: formatScoreDelta(row.delta),
+      },
+    ];
+  });
+}
+
+function formatScoreDelta(delta?: number | null) {
+  if (typeof delta !== 'number' || delta === 0) {
+    return '';
+  }
+
+  const direction = delta > 0 ? '▲' : '▼';
+  return `(${Math.abs(delta)}%${direction})`;
 }
 
 function formatRbtiDate(value: string) {
@@ -155,7 +246,7 @@ const styles = StyleSheet.create({
   card: {
     minHeight: 86,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingHorizontal: 16,
@@ -188,6 +279,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 4,
   },
+  sourceText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#D89025',
+    fontWeight: '800',
+    marginBottom: 3,
+  },
   rbtiText: {
     fontSize: 18,
     lineHeight: 25,
@@ -195,6 +293,38 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   rbtiCodeText: {
+    color: '#D89025',
+  },
+  previousText: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#7B7E87',
+    fontWeight: '600',
+  },
+  scoreGrid: {
+    marginTop: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  scorePill: {
+    minHeight: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFF6EA',
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scoreLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B6E79',
+    marginRight: 5,
+  },
+  scoreValue: {
+    fontSize: 11,
+    fontWeight: '800',
     color: '#D89025',
   },
   emptyWrap: {

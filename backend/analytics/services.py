@@ -10,8 +10,6 @@ from rbti.models import RbtiType, UserRbtiSnapshot
 
 DEFAULT_RBTI_UPDATE_ALPHA = 0.1
 BOOSTED_RBTI_UPDATE_ALPHA = 0.15
-MIN_REVIEW_LENGTH_FOR_RBTI_UPDATE = 30
-MIN_CONFIDENCE_FOR_RBTI_UPDATE = 0.6
 BOOSTED_CONFIDENCE_THRESHOLD = 0.8
 BOOSTED_REVIEW_LENGTH_THRESHOLD = 200
 
@@ -47,12 +45,6 @@ def analyze_review_and_update_user_rbti(review):
 
 @transaction.atomic
 def update_user_rbti_from_analysis(user, analysis_result, review_length):
-    if review_length < MIN_REVIEW_LENGTH_FOR_RBTI_UPDATE:
-        return None
-
-    if analysis_result.confidence_score < MIN_CONFIDENCE_FOR_RBTI_UPDATE:
-        return None
-
     current_snapshot = (
         UserRbtiSnapshot.objects.select_for_update()
         .select_related("rbti_type")
@@ -61,9 +53,6 @@ def update_user_rbti_from_analysis(user, analysis_result, review_length):
         .first()
     )
 
-    if not current_snapshot:
-        return None
-
     alpha = DEFAULT_RBTI_UPDATE_ALPHA
     if (
         analysis_result.confidence_score >= BOOSTED_CONFIDENCE_THRESHOLD
@@ -71,30 +60,35 @@ def update_user_rbti_from_analysis(user, analysis_result, review_length):
     ):
         alpha = BOOSTED_RBTI_UPDATE_ALPHA
 
-    new_scores = {
-        field: _blend_score(
-            getattr(current_snapshot, field),
-            getattr(analysis_result, field),
-            alpha,
-        )
-        for field in [
-            "analytic_score",
-            "immersion_score",
-            "critical_score",
-            "empathy_score",
-            "practical_score",
-            "expansion_score",
-        ]
-    }
+    score_fields = [
+        "analytic_score",
+        "immersion_score",
+        "critical_score",
+        "empathy_score",
+        "practical_score",
+        "expansion_score",
+    ]
+    if current_snapshot:
+        new_scores = {
+            field: _blend_score(
+                getattr(current_snapshot, field),
+                getattr(analysis_result, field),
+                alpha,
+            )
+            for field in score_fields
+        }
+    else:
+        new_scores = {
+            field: _normalize_score(getattr(analysis_result, field))
+            for field in score_fields
+        }
 
     rbti_code = make_rbti_code_from_snapshot_scores(new_scores)
     rbti_type = RbtiType.objects.filter(code=rbti_code).first()
     if not rbti_type:
         return None
 
-    UserRbtiSnapshot.objects.filter(user=user, is_current=True).update(
-        is_current=False
-    )
+    UserRbtiSnapshot.objects.filter(user=user, is_current=True).update(is_current=False)
 
     return UserRbtiSnapshot.objects.create(
         user=user,
@@ -115,7 +109,11 @@ def make_rbti_code_from_snapshot_scores(scores):
 
 def _blend_score(old_score, ai_score, alpha):
     blended = old_score * (1 - alpha) + ai_score * alpha
-    return max(0, min(100, round(blended)))
+    return _normalize_score(blended)
+
+
+def _normalize_score(score):
+    return max(0, min(100, round(score)))
 
 
 def _rating_to_sentiment_score(rating):

@@ -5,7 +5,6 @@ from .models import (
     UserRbtiSnapshot,
     RbtiSurveyQuestion,
     RbtiSurveyChoice,
-    RbtiSurveySession,
 )
 
 RBTI_AXIS_DEFINITIONS = [
@@ -31,6 +30,46 @@ RBTI_AXIS_DEFINITIONS = [
         "right_name": "문장형",
     },
 ]
+
+RBTI_SCORE_FIELDS = [
+    "analytic_score",
+    "immersion_score",
+    "critical_score",
+    "empathy_score",
+    "practical_score",
+    "expansion_score",
+]
+
+
+def get_previous_snapshot(serializer, obj):
+    previous_by_id = serializer.context.get("previous_snapshot_by_id", {})
+    if obj.id in previous_by_id:
+        return previous_by_id[obj.id]
+
+    return serializer.context.get("previous_snapshot")
+
+
+def build_score_changes(current_snapshot, previous_snapshot):
+    changes = {}
+
+    for field in RBTI_SCORE_FIELDS:
+        current_score = getattr(current_snapshot, field)
+        previous_score = (
+            getattr(previous_snapshot, field)
+            if previous_snapshot is not None
+            else None
+        )
+        changes[field] = {
+            "current": current_score,
+            "previous": previous_score,
+            "delta": (
+                current_score - previous_score
+                if previous_score is not None
+                else None
+            ),
+        }
+
+    return changes
 
 
 class RbtiTypeListSerializer(serializers.ModelSerializer):
@@ -62,6 +101,20 @@ class UserCurrentRbtiSerializer(serializers.ModelSerializer):
     axis_1 = serializers.CharField(source="rbti_type.axis_1", read_only=True)
     axis_2 = serializers.CharField(source="rbti_type.axis_2", read_only=True)
     axis_3 = serializers.CharField(source="rbti_type.axis_3", read_only=True)
+    previous_rbti_code = serializers.SerializerMethodField()
+    previous_rbti_name = serializers.SerializerMethodField()
+    score_changes = serializers.SerializerMethodField()
+
+    def get_previous_rbti_code(self, obj):
+        previous_snapshot = get_previous_snapshot(self, obj)
+        return previous_snapshot.rbti_type.code if previous_snapshot else None
+
+    def get_previous_rbti_name(self, obj):
+        previous_snapshot = get_previous_snapshot(self, obj)
+        return previous_snapshot.rbti_type.name if previous_snapshot else None
+
+    def get_score_changes(self, obj):
+        return build_score_changes(obj, get_previous_snapshot(self, obj))
 
     class Meta:
         model = UserRbtiSnapshot
@@ -82,20 +135,48 @@ class UserCurrentRbtiSerializer(serializers.ModelSerializer):
             "source_type",
             "source_ref_id",
             "created_at",
+            "previous_rbti_code",
+            "previous_rbti_name",
+            "score_changes",
         ]
 
 
 class UserRbtiHistorySerializer(serializers.ModelSerializer):
     rbti_code = serializers.CharField(source="rbti_type.code", read_only=True)
     rbti_name = serializers.CharField(source="rbti_type.name", read_only=True)
+    previous_rbti_code = serializers.SerializerMethodField()
+    previous_rbti_name = serializers.SerializerMethodField()
+    score_changes = serializers.SerializerMethodField()
+
+    def get_previous_rbti_code(self, obj):
+        previous_snapshot = get_previous_snapshot(self, obj)
+        return previous_snapshot.rbti_type.code if previous_snapshot else None
+
+    def get_previous_rbti_name(self, obj):
+        previous_snapshot = get_previous_snapshot(self, obj)
+        return previous_snapshot.rbti_type.name if previous_snapshot else None
+
+    def get_score_changes(self, obj):
+        return build_score_changes(obj, get_previous_snapshot(self, obj))
 
     class Meta:
-        model = RbtiSurveySession
+        model = UserRbtiSnapshot
         fields = [
             "id",
             "rbti_code",
             "rbti_name",
+            "analytic_score",
+            "immersion_score",
+            "critical_score",
+            "empathy_score",
+            "practical_score",
+            "expansion_score",
+            "source_type",
+            "source_ref_id",
             "created_at",
+            "previous_rbti_code",
+            "previous_rbti_name",
+            "score_changes",
         ]
 
 

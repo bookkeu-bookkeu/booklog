@@ -40,7 +40,6 @@ class UserBook(TimeStampedModel):
     started_at = models.DateField(null=True, blank=True)
     finished_at = models.DateField(null=True, blank=True)
     book_type = models.CharField(max_length=30, null=True, blank=True)
-    page_count = models.PositiveIntegerField(null=True, blank=True)
     is_favorite = models.BooleanField(default=False)
 
     class Meta:

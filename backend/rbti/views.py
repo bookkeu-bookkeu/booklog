@@ -109,7 +109,7 @@ class CurrentUserRbtiAPIView(APIView):
         current_snapshot = (
             UserRbtiSnapshot.objects.select_related("rbti_type")
             .filter(user=request.user, is_current=True)
-            .order_by("-created_at")
+            .order_by("-created_at", "-id")
             .first()
         )
 
@@ -123,7 +123,17 @@ class CurrentUserRbtiAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        serializer = UserCurrentRbtiSerializer(current_snapshot)
+        previous_snapshot = (
+            UserRbtiSnapshot.objects.select_related("rbti_type")
+            .filter(user=request.user)
+            .exclude(id=current_snapshot.id)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        serializer = UserCurrentRbtiSerializer(
+            current_snapshot,
+            context={"previous_snapshot": previous_snapshot},
+        )
         return Response(
             {
                 "has_rbti": True,
@@ -138,12 +148,20 @@ class UserRbtiHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = (
-            RbtiSurveySession.objects.select_related("rbti_type")
-            .filter(user=request.user, rbti_type__isnull=False)
+        snapshots = list(
+            UserRbtiSnapshot.objects.select_related("rbti_type")
+            .filter(user=request.user)
             .order_by("-created_at", "-id")
         )
-        serializer = UserRbtiHistorySerializer(queryset, many=True)
+        previous_snapshot_by_id = {
+            snapshot.id: snapshots[index + 1]
+            for index, snapshot in enumerate(snapshots[:-1])
+        }
+        serializer = UserRbtiHistorySerializer(
+            snapshots,
+            many=True,
+            context={"previous_snapshot_by_id": previous_snapshot_by_id},
+        )
         return Response(
             {
                 "count": len(serializer.data),

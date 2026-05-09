@@ -14,7 +14,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getMe } from '../../api/auth';
 import { getMyLibraryBooks } from '../../api/books';
 import { getBookReviews } from '../../api/reviews';
-import { getCurrentUserRbti } from '../../api/rbti';
+import {
+  getCurrentUserRbti,
+  type CurrentUserRbti,
+  type CurrentUserRbtiResponse,
+} from '../../api/rbti';
 import UserProfileHeader, { userProfileHeaderStyles } from '../../components/UserProfileHeader';
 import LibraryBookCard, { LibraryBookCardItem } from '../../components/LibraryBookCard';
 import { Book } from '../../navigation/types';
@@ -23,6 +27,7 @@ type RbtiAxis = {
   id: string;
   label: string;
   valueText: string;
+  deltaText: string;
   fillPercent: number; // 0 ~ 100
 };
 
@@ -30,12 +35,6 @@ type HomeBookCardItem = LibraryBookCardItem & {
   id: string;
   detailBook: Book;
 };
-
-const rbtiAxes: RbtiAxis[] = [
-  { id: '1', label: '탐구형', valueText: '+10%', fillPercent: 74 },
-  { id: '2', label: '공감형', valueText: '-7%', fillPercent: 56 },
-  { id: '3', label: '문장형', valueText: '+2%', fillPercent: 66 },
-];
 
 function mapLibraryBookToHomeItem(item: {
   id: number;
@@ -74,6 +73,96 @@ function mapLibraryBookToHomeItem(item: {
   };
 }
 
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getScore(value: number | undefined) {
+  return clampPercent(typeof value === 'number' ? value : 50);
+}
+
+function formatScoreDelta(delta: number | null | undefined) {
+  if (typeof delta !== 'number' || delta === 0) {
+    return '';
+  }
+
+  const direction = delta > 0 ? '▲' : '▼';
+  return `(${Math.abs(delta)}%${direction})`;
+}
+
+function buildRbtiAxes(
+  currentRbti: CurrentUserRbti,
+  axisDefinitions: CurrentUserRbtiResponse['axis_definitions'],
+): RbtiAxis[] {
+  const definitionsByAxis = new Map(axisDefinitions.map((definition) => [definition.axis, definition]));
+  const rbtiCode = currentRbti.rbti_code?.trim().toUpperCase() ?? '';
+
+  const axisConfigs = [
+    {
+      id: '1',
+      axis: 1,
+      codeIndex: 0,
+      leftScore: getScore(currentRbti.analytic_score),
+      rightScore: getScore(currentRbti.immersion_score),
+      leftDelta: currentRbti.score_changes?.analytic_score.delta,
+      rightDelta: currentRbti.score_changes?.immersion_score.delta,
+      fallbackLeftName: '수용형',
+      fallbackRightName: '탐구형',
+      fallbackLeftCode: 'R',
+      fallbackRightCode: 'I',
+    },
+    {
+      id: '2',
+      axis: 2,
+      codeIndex: 1,
+      leftScore: getScore(currentRbti.critical_score),
+      rightScore: getScore(currentRbti.empathy_score),
+      leftDelta: currentRbti.score_changes?.critical_score.delta,
+      rightDelta: currentRbti.score_changes?.empathy_score.delta,
+      fallbackLeftName: '분석형',
+      fallbackRightName: '공감형',
+      fallbackLeftCode: 'A',
+      fallbackRightCode: 'E',
+    },
+    {
+      id: '3',
+      axis: 3,
+      codeIndex: 2,
+      leftScore: getScore(currentRbti.practical_score),
+      rightScore: getScore(currentRbti.expansion_score),
+      leftDelta: currentRbti.score_changes?.practical_score.delta,
+      rightDelta: currentRbti.score_changes?.expansion_score.delta,
+      fallbackLeftName: '서사형',
+      fallbackRightName: '문장형',
+      fallbackLeftCode: 'N',
+      fallbackRightCode: 'S',
+    },
+  ];
+
+  return axisConfigs.map((config) => {
+    const definition = definitionsByAxis.get(config.axis);
+    const leftCode = definition?.left_code ?? config.fallbackLeftCode;
+    const rightCode = definition?.right_code ?? config.fallbackRightCode;
+    const selectedCode = rbtiCode[config.codeIndex];
+    const isRightSelected = selectedCode
+      ? selectedCode === rightCode
+      : config.rightScore > config.leftScore;
+    const score = isRightSelected ? config.rightScore : config.leftScore;
+    const delta = isRightSelected ? config.rightDelta : config.leftDelta;
+    const label = isRightSelected
+      ? definition?.right_name ?? config.fallbackRightName
+      : definition?.left_name ?? config.fallbackLeftName;
+
+    return {
+      id: config.id,
+      label,
+      valueText: `${score}%`,
+      deltaText: formatScoreDelta(delta),
+      fillPercent: score,
+    };
+  });
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -82,6 +171,7 @@ export default function HomeScreen() {
   const [isReadingBooksLoading, setIsReadingBooksLoading] = useState(true);
   const [isWaitingReviewBooksLoading, setIsWaitingReviewBooksLoading] = useState(true);
   const [userRbtiName, setUserRbtiName] = useState<string>('');
+  const [rbtiAxes, setRbtiAxes] = useState<RbtiAxis[]>([]);
   const [userNickname, setUserNickname] = useState<string>('');
 
   const fetchHomeBooks = useCallback(async () => {
@@ -133,10 +223,15 @@ export default function HomeScreen() {
         const rbtiResponse = await getCurrentUserRbti();
         if (rbtiResponse.has_rbti && rbtiResponse.current_rbti?.rbti_name) {
           setUserRbtiName(rbtiResponse.current_rbti.rbti_name);
+          setRbtiAxes(buildRbtiAxes(rbtiResponse.current_rbti, rbtiResponse.axis_definitions));
+        } else {
+          setUserRbtiName('');
+          setRbtiAxes([]);
         }
       } catch (error) {
         // RBTI 로드 실패 시 기본값 사용
         setUserRbtiName('');
+        setRbtiAxes([]);
       }
     } catch (error) {
       setReadingBooks([]);
@@ -176,9 +271,13 @@ export default function HomeScreen() {
           <Text style={[styles.sectionTitle, styles.rbtiSectionTitle]}>내 최근 리뷰로 보정된 RBTI</Text>
 
           <View style={styles.rbtiBox}>
-            {rbtiAxes.map((axis) => (
-              <RbtiBar key={axis.id} item={axis} />
-            ))}
+            {rbtiAxes.length > 0 ? (
+              rbtiAxes.map((axis) => (
+                <RbtiBar key={axis.id} item={axis} />
+              ))
+            ) : (
+              <Text style={styles.rbtiEmptyText}>아직 표시할 RBTI 수치가 없어요.</Text>
+            )}
           </View>
         </View>
 
@@ -241,7 +340,10 @@ function RbtiBar({ item }: { item: RbtiAxis }) {
               },
             ]}
           />
-          <Text style={styles.rbtiValue}>{item.valueText}</Text>
+          <Text style={styles.rbtiValue}>
+            {item.valueText}
+            {!!item.deltaText && <Text style={styles.rbtiDeltaValue}>{item.deltaText}</Text>}
+          </Text>
         </View>
       </View>
     </View>
@@ -387,6 +489,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#E67F1E',
+  },
+  rbtiDeltaValue: {
+    color: '#8B909B',
+  },
+  rbtiEmptyText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#8B909B',
   },
 
   horizontalListContent: {
