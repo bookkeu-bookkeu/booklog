@@ -189,6 +189,12 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       return;
     }
 
+    // SearchTab이 이미 focus된 상태에서 클릭되면 SearchHome으로 이동
+    if (route.name === 'SearchTab') {
+      navigation.navigate('SearchTab', { screen: 'SearchHome' });
+      return;
+    }
+
     const nestedState = route.state as { key?: string } | undefined;
     if (nestedState?.key) {
       navigation.dispatch({
