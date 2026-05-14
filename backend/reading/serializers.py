@@ -29,6 +29,7 @@ class UserBookListSerializer(serializers.ModelSerializer):
     book_thumbnail_url = serializers.CharField(source="book.thumbnail_url", read_only=True)
     book_isbn13 = serializers.CharField(source="book.isbn13", read_only=True)
     book_publisher = serializers.CharField(source="book.publisher", read_only=True)
+    book_category = serializers.CharField(source="book.category", read_only=True)
     book_authors = serializers.SerializerMethodField()
 
     def get_book_authors(self, obj):
@@ -43,6 +44,7 @@ class UserBookListSerializer(serializers.ModelSerializer):
             "book_thumbnail_url",
             "book_isbn13",
             "book_publisher",
+            "book_category",
             "book_authors",
             "shelf_code",
             "shelf_name",

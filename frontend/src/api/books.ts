@@ -10,6 +10,7 @@ export interface UserLibraryBook {
   book_thumbnail_url: string;
   book_isbn13: string;
   book_publisher: string;
+  book_category?: string;
   book_authors: string[];
   shelf_code: UserShelfCode;
   shelf_name: string;

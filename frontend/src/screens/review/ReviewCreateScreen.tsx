@@ -80,6 +80,11 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
   };
 
   const resolveBookId = async () => {
+    const rawExternalId = `${book?.external_api_id ?? ''}`.trim();
+    if (/^\d+$/.test(rawExternalId)) {
+      return Number(rawExternalId);
+    }
+
     const isbn13 =
       typeof book?.isbn13 === 'string' && book.isbn13.trim()
         ? book.isbn13.trim()

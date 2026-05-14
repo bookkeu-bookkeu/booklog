@@ -3,7 +3,7 @@ from html import unescape
 from urllib.parse import unquote
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from books.models import Author, Book, BookAuthor
 
@@ -183,18 +183,27 @@ class BookImportService:
         data4library_metadata = cls._get_data4library_metadata(isbn13)
 
         # 4. Book 생성
-        book = Book.objects.create(
-            isbn13=mapped.get("isbn13") or None,
-            title=mapped.get("title", ""),
-            publisher=mapped.get("publisher", ""),
-            description=data4library_metadata.get("description") or mapped.get("contents", ""),
-            category=data4library_metadata.get("category", ""),
-            kdc=data4library_metadata.get("kdc", ""),
-            subject=data4library_metadata.get("subject", ""),
-            thumbnail_url=mapped.get("thumbnail", ""),
-            external_api_source="kakao",
-            external_api_id=mapped.get("external_api_id", ""),
-        )
+        book_isbn13 = mapped.get("isbn13") or isbn13
+        try:
+            with transaction.atomic():
+                book = Book.objects.create(
+                    isbn13=book_isbn13,
+                    title=mapped.get("title", ""),
+                    publisher=mapped.get("publisher", ""),
+                    description=data4library_metadata.get("description") or mapped.get("contents", ""),
+                    category=data4library_metadata.get("category", ""),
+                    kdc=data4library_metadata.get("kdc", ""),
+                    subject=data4library_metadata.get("subject", ""),
+                    thumbnail_url=mapped.get("thumbnail", ""),
+                    external_api_source="kakao",
+                    external_api_id=mapped.get("external_api_id", ""),
+                )
+        except IntegrityError:
+            existing = Book.objects.filter(isbn13=book_isbn13).first()
+            if existing:
+                cls._merge_data4library_metadata(existing, book_isbn13)
+                return existing, False
+            raise
 
         # 5. Author + BookAuthor 생성
         authors = mapped.get("authors", [])

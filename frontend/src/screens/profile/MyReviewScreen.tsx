@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -14,7 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SearchBar from '../../components/SearchBar';
 import type { ProfileStackParamList } from '../../navigation/ProfileNavigator';
-import { getBookReviews, type ReviewItem } from '../../api/reviews';
+import { deleteReview, getBookReviews, type ReviewItem } from '../../api/reviews';
 
 const REVIEW_PLACEHOLDER = 'https://via.placeholder.com/84x120/F3EFE7/9E8F7A?text=Book';
 
@@ -25,6 +26,7 @@ export default function MyReviewScreen() {
   const [loadError, setLoadError] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [deletingReviewId, setDeletingReviewId] = useState<number | null>(null);
 
   const fetchMyReviews = useCallback(async () => {
     setIsLoading(true);
@@ -69,12 +71,49 @@ export default function MyReviewScreen() {
     setIsSearchVisible((prev) => !prev);
   };
 
+  const handleDeleteReview = (review: ReviewItem) => {
+    if (deletingReviewId) {
+      return;
+    }
+
+    Alert.alert('알림', '리뷰를 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setDeletingReviewId(review.id);
+            await deleteReview(review.id);
+            setReviews((prev) => prev.filter((item) => item.id !== review.id));
+          } catch (error: any) {
+            const detail = error?.response?.data?.detail;
+            Alert.alert(
+              '알림',
+              typeof detail === 'string' && detail.trim()
+                ? detail
+                : '리뷰를 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
+            );
+          } finally {
+            setDeletingReviewId(null);
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
         data={filteredReviews}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <MyReviewCard review={item} />}
+        renderItem={({ item }) => (
+          <MyReviewCard
+            review={item}
+            isDeleting={deletingReviewId === item.id}
+            onDelete={handleDeleteReview}
+          />
+        )}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={(
@@ -124,7 +163,15 @@ export default function MyReviewScreen() {
   );
 }
 
-function MyReviewCard({ review }: { review: ReviewItem }) {
+function MyReviewCard({
+  review,
+  isDeleting,
+  onDelete,
+}: {
+  review: ReviewItem;
+  isDeleting: boolean;
+  onDelete: (review: ReviewItem) => void;
+}) {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const thumbnail = review.book_thumbnail_url || REVIEW_PLACEHOLDER;
   const reviewText = truncateText(review.content, 110);
@@ -143,7 +190,6 @@ function MyReviewCard({ review }: { review: ReviewItem }) {
         published_at: '',
         thumbnail: review.book_thumbnail_url || '',
       },
-      reviewId: review.id,
     });
   };
 
@@ -152,9 +198,24 @@ function MyReviewCard({ review }: { review: ReviewItem }) {
       <Image source={{ uri: thumbnail }} style={styles.thumbnail} resizeMode="cover" />
 
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>
-          {review.book_title}
-        </Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.title} numberOfLines={2}>
+            {review.book_title}
+          </Text>
+
+          <Pressable
+            style={styles.deleteButton}
+            hitSlop={10}
+            disabled={isDeleting}
+            onPress={() => onDelete(review)}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color="#FEC54B" />
+            ) : (
+              <Ionicons name="trash-outline" size={22} color="#FEC54B" />
+            )}
+          </Pressable>
+        </View>
 
         <Text style={styles.reviewText} numberOfLines={3}>
           {reviewText}
@@ -236,12 +297,25 @@ const styles = StyleSheet.create({
     marginLeft: 14,
     justifyContent: 'center',
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 10,
+  },
   title: {
+    flex: 1,
     fontSize: 17,
     lineHeight: 24,
     fontWeight: '700',
     color: '#1F1A15',
-    marginBottom: 10,
+  },
+  deleteButton: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reviewText: {
     fontSize: 12,

@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   LayoutChangeEvent,
@@ -14,7 +15,7 @@ import {
 import { useFocusEffect, useNavigation, useScrollToTop } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import Svg, { Circle, G } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import type { ProfileStackParamList } from '../../navigation/ProfileNavigator';
 import { getMe } from '../../api/auth';
 import { getCurrentUserRbti } from '../../api/rbti';
@@ -38,6 +39,7 @@ type StatItem = {
   label: string;
   percent: string;
   value: number;
+  count: number;
   fill: string;
   textColor: string;
 };
@@ -61,35 +63,17 @@ const PICKER_ITEM_GAP = 8;
 const PICKER_VISIBLE_HEIGHT = 260;
 const PICKER_ROW_UNIT = PICKER_ITEM_HEIGHT + PICKER_ITEM_GAP;
 
-const DONUT_STATS: StatItem[] = [
-  {
-    label: '문학',
-    percent: '48.8%',
-    value: 48.8,
-    fill: '#DCA047',
-    textColor: '#DCA047',
-  },
-  {
-    label: '경영/경제',
-    percent: '24.3%',
-    value: 24.3,
-    fill: '#E4BC8F',
-    textColor: '#DCA047',
-  },
-  {
-    label: '에세이',
-    percent: '14.6%',
-    value: 14.6,
-    fill: '#E9D5BF',
-    textColor: '#DCA047',
-  },
-  {
-    label: '과학',
-    percent: '12.3%',
-    value: 12.3,
-    fill: '#F2E9DC',
-    textColor: '#DCA047',
-  },
+const STAT_COLORS = [
+  '#F2B84B',
+  '#E8795E',
+  '#5FAF96',
+  '#5C9DDC',
+  '#9B7BD9',
+  '#D66FA3',
+  '#7EA34D',
+  '#C9823E',
+  '#4FA6B8',
+  '#8B7A66',
 ];
 
 const CELL_GAP = 8;
@@ -97,6 +81,7 @@ const CALENDAR_HORIZONTAL = 36;
 const CELL_WIDTH = (SCREEN_WIDTH - CALENDAR_HORIZONTAL * 2 - CELL_GAP * 6) / 7;
 const DONUT_SIZE = Math.min(SCREEN_WIDTH - 72, 300);
 const DONUT_STROKE_WIDTH = 40;
+const REFRESH_SCROLL_THRESHOLD = 8;
 
 function buildCalendarDays(year: number, month: number, completedCoverByDay: Map<number, string>): CalendarDay[] {
   const firstWeekdaySundayStart = new Date(year, month, 1).getDay();
@@ -139,13 +124,85 @@ function getDateParts(value: string | null): { year: number; month: number; day:
   return { year, month, day };
 }
 
+function buildBookTypeStats(books: UserLibraryBook[]): StatItem[] {
+  const countByType = new Map<string, number>();
+
+  books.forEach((book) => {
+    const bookType = book.book_category?.trim() || '미분류';
+    countByType.set(bookType, (countByType.get(bookType) ?? 0) + 1);
+  });
+
+  const totalCount = books.length;
+  if (totalCount === 0) {
+    return [];
+  }
+
+  return Array.from(countByType.entries())
+    .sort(([leftLabel, leftCount], [rightLabel, rightCount]) => {
+      if (rightCount !== leftCount) {
+        return rightCount - leftCount;
+      }
+
+      return leftLabel.localeCompare(rightLabel, 'ko');
+    })
+    .map(([label, count], index) => {
+      const value = (count / totalCount) * 100;
+      const fill = STAT_COLORS[index % STAT_COLORS.length];
+
+      return {
+        label,
+        count,
+        value,
+        percent: `${value.toFixed(1)}%`,
+        fill,
+        textColor: fill,
+      };
+    });
+}
+
+function getDonutPoint(center: number, radius: number, angle: number) {
+  const angleInRadians = ((angle - 90) * Math.PI) / 180;
+
+  return {
+    x: center + radius * Math.cos(angleInRadians),
+    y: center + radius * Math.sin(angleInRadians),
+  };
+}
+
+function describeDonutSegment(
+  center: number,
+  outerRadius: number,
+  innerRadius: number,
+  startPercent: number,
+  endPercent: number
+) {
+  const startAngle = (startPercent / 100) * 360;
+  const endAngle = (endPercent / 100) * 360;
+  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+  const outerStart = getDonutPoint(center, outerRadius, startAngle);
+  const outerEnd = getDonutPoint(center, outerRadius, endAngle);
+  const innerStart = getDonutPoint(center, innerRadius, startAngle);
+  const innerEnd = getDonutPoint(center, innerRadius, endAngle);
+
+  return [
+    `M ${outerStart.x} ${outerStart.y}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${outerEnd.x} ${outerEnd.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${innerStart.x} ${innerStart.y}`,
+    'Z',
+  ].join(' ');
+}
+
 export default function MyPageScreen() {
   const [userRbtiName, setUserRbtiName] = useState<string>('');
   const [userNickname, setUserNickname] = useState<string>('');
+  const [refreshKey, setRefreshKey] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
   const [calendarDividerY, setCalendarDividerY] = useState(0);
   const [calendarSectionY, setCalendarSectionY] = useState(0);
   const [statsSectionY, setStatsSectionY] = useState(0);
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -170,9 +227,24 @@ export default function MyPageScreen() {
   useFocusEffect(
     useCallback(() => {
       void fetchUserProfile();
-    }, [fetchUserProfile]),
+    }, [fetchUserProfile, refreshKey]),
   );
   useScrollToTop(scrollViewRef);
+
+  useEffect(() => {
+    const parentNavigation = navigation.getParent();
+    if (!parentNavigation) {
+      return undefined;
+    }
+
+    return (parentNavigation as any).addListener('tabPress', () => {
+      if (!navigation.isFocused() || scrollYRef.current > REFRESH_SCROLL_THRESHOLD) {
+        return;
+      }
+
+      setRefreshKey((prev) => prev + 1);
+    });
+  }, [navigation]);
 
   const scrollToCalendarSection = useCallback(() => {
     const targetY = calendarDividerY > 0 ? calendarDividerY : calendarSectionY;
@@ -188,6 +260,10 @@ export default function MyPageScreen() {
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(event) => {
+          scrollYRef.current = event.nativeEvent.contentOffset.y;
+        }}
         contentContainerStyle={styles.contentContainer}
       >
         <UserProfileHeader
@@ -212,6 +288,7 @@ export default function MyPageScreen() {
         />
 
         <ReadingCalendarSection
+          refreshKey={refreshKey}
           onLayout={(event) => {
             setCalendarSectionY(event.nativeEvent.layout.y);
           }}
@@ -220,6 +297,7 @@ export default function MyPageScreen() {
         <DividerBlock />
 
         <ReadingStatsSection
+          refreshKey={refreshKey}
           onLayout={(event) => {
             setStatsSectionY(event.nativeEvent.layout.y);
           }}
@@ -288,7 +366,13 @@ function DividerBlock({ onLayout }: { onLayout?: (event: LayoutChangeEvent) => v
   return <View style={styles.dividerBlock} onLayout={onLayout} />;
 }
 
-function ReadingCalendarSection({ onLayout }: { onLayout?: (event: LayoutChangeEvent) => void }) {
+function ReadingCalendarSection({
+  refreshKey,
+  onLayout,
+}: {
+  refreshKey: number;
+  onLayout?: (event: LayoutChangeEvent) => void;
+}) {
   const today = new Date();
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth());
@@ -311,7 +395,7 @@ function ReadingCalendarSection({ onLayout }: { onLayout?: (event: LayoutChangeE
       };
 
       void fetchCompletedBooks();
-    }, []),
+    }, [refreshKey]),
   );
 
   const completedCoverByDay = useMemo(() => {
@@ -485,71 +569,134 @@ function CalendarCell({ item, weekdayIndex }: { item: CalendarDay; weekdayIndex:
   );
 }
 
-function DonutChart({ data }: { data: StatItem[] }) {
+function DonutChart({ data, totalCount }: { data: StatItem[]; totalCount: number }) {
   const center = DONUT_SIZE / 2;
-  const radius = center - DONUT_STROKE_WIDTH / 2;
-  const circumference = 2 * Math.PI * radius;
+  const outerRadius = center;
+  const innerRadius = center - DONUT_STROKE_WIDTH;
   let cumulativePercent = 0;
 
   return (
     <View style={styles.donutChartWrap}>
       <Svg width={DONUT_SIZE} height={DONUT_SIZE}>
-        <G rotation={-90} origin={`${center}, ${center}`}>
-          {data.map((item) => {
-            const dashLength = (item.value / 100) * circumference;
-            const dashOffset = circumference - (cumulativePercent / 100) * circumference;
-            cumulativePercent += item.value;
+        {data.length === 1 ? (
+          <Circle
+            cx={center}
+            cy={center}
+            r={outerRadius - DONUT_STROKE_WIDTH / 2}
+            fill="none"
+            stroke={data[0].fill}
+            strokeWidth={DONUT_STROKE_WIDTH}
+          />
+        ) : (
+          data.map((item, index) => {
+            const startPercent = cumulativePercent;
+            const endPercent = index === data.length - 1 ? 100 : Math.min(100, cumulativePercent + item.value);
+            cumulativePercent = endPercent;
 
             return (
-              <Circle
+              <Path
                 key={item.label}
-                cx={center}
-                cy={center}
-                r={radius}
-                fill="none"
-                stroke={item.fill}
-                strokeWidth={DONUT_STROKE_WIDTH}
-                strokeLinecap="butt"
-                strokeDasharray={`${dashLength} ${circumference}`}
-                strokeDashoffset={dashOffset}
+                d={describeDonutSegment(center, outerRadius, innerRadius, startPercent, endPercent)}
+                fill={item.fill}
               />
             );
-          })}
-        </G>
+          })
+        )}
       </Svg>
 
       <View style={styles.donutCenterHole}>
         <Text style={styles.donutCenterTitle}>도서 분야</Text>
+        <Text style={styles.donutCenterCount}>{totalCount}권</Text>
       </View>
     </View>
   );
 }
 
-function ReadingStatsSection({ onLayout }: { onLayout?: (event: LayoutChangeEvent) => void }) {
+function ReadingStatsSection({
+  refreshKey,
+  onLayout,
+}: {
+  refreshKey: number;
+  onLayout?: (event: LayoutChangeEvent) => void;
+}) {
+  const [completedBooks, setCompletedBooks] = useState<UserLibraryBook[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchCompletedBooks = async () => {
+        setIsLoading(true);
+
+        try {
+          const doneBooks = await getMyLibraryBooks('DONE');
+          if (isActive) {
+            setCompletedBooks(doneBooks);
+          }
+        } catch (error) {
+          if (isActive) {
+            setCompletedBooks([]);
+          }
+        } finally {
+          if (isActive) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      void fetchCompletedBooks();
+
+      return () => {
+        isActive = false;
+      };
+    }, [refreshKey]),
+  );
+
+  const stats = useMemo(() => buildBookTypeStats(completedBooks), [completedBooks]);
+  const totalCount = completedBooks.length;
+
   return (
     <View style={styles.section} onLayout={onLayout}>
       <Text style={styles.sectionTitle}>독서 통계</Text>
 
       <View style={styles.statsTextWrap}>
         <Text style={styles.statsMainTitle}>도서 분야</Text>
-        <Text style={styles.statsSubTitle}>"완료" 상태의 도서 기준</Text>
+        <Text style={styles.statsSubTitle}>
+          {isLoading ? '"완료" 상태의 도서 기준' : `"완료" 상태의 도서 ${totalCount}권 기준`}
+        </Text>
       </View>
 
-      <View style={styles.donutSection}>
-        <DonutChart data={DONUT_STATS} />
-
-        <View style={styles.statsLegendWrap}>
-          {DONUT_STATS.map((item) => (
-            <View key={item.label} style={styles.statsLegendRow}>
-              <View style={[styles.legendDot, { backgroundColor: item.fill }]} />
-              <Text style={styles.statsLegendLabel}>{item.label}</Text>
-              <View style={styles.percentPill}>
-                <Text style={[styles.percentText, { color: item.textColor }]}>{item.percent}</Text>
-              </View>
-            </View>
-          ))}
+      {isLoading ? (
+        <View style={styles.statsStateBox}>
+          <ActivityIndicator color="#FEC54B" />
+          <Text style={styles.statsStateText}>통계를 불러오는 중이에요</Text>
         </View>
-      </View>
+      ) : stats.length > 0 ? (
+        <View style={styles.donutSection}>
+          <DonutChart data={stats} totalCount={totalCount} />
+
+          <View style={styles.statsLegendWrap}>
+            {stats.map((item) => (
+              <View key={item.label} style={styles.statsLegendRow}>
+                <View style={[styles.legendDot, { backgroundColor: item.fill }]} />
+                <Text style={styles.statsLegendLabel} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                <Text style={styles.statsLegendMeta}>{item.count}권</Text>
+                <View style={styles.percentPill}>
+                  <Text style={[styles.percentText, { color: item.textColor }]}>{item.percent}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.statsStateBox}>
+          <Text style={styles.statsStateTitle}>완료한 책이 아직 없어요.</Text>
+          <Text style={styles.statsStateText}>책을 완료하면 분야별 통계가 자동으로 표시됩니다.</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -786,6 +933,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#A8844C',
   },
+  donutCenterCount: {
+    marginTop: 4,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#2A2D33',
+  },
   statsLegendWrap: {
     marginTop: 20,
     width: '100%',
@@ -807,6 +960,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2A2D33',
   },
+  statsLegendMeta: {
+    marginRight: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8A8E98',
+  },
   percentPill: {
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -817,5 +976,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#DCA047',
+  },
+  statsStateBox: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    rowGap: 10,
+  },
+  statsStateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2A2D33',
+  },
+  statsStateText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#8A8E98',
+    textAlign: 'center',
   },
 });
