@@ -270,7 +270,11 @@ export default function MyPageScreen() {
           rbtiName={userRbtiName}
           nickname={userNickname}
           rightAccessory={(
-            <Pressable style={userProfileHeaderStyles.editButton} hitSlop={10}>
+            <Pressable
+              style={userProfileHeaderStyles.editButton}
+              hitSlop={10}
+              onPress={() => navigation.navigate('Settings')}
+            >
               <Text style={userProfileHeaderStyles.editButtonText}>프로필 수정</Text>
             </Pressable>
           )}

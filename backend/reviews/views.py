@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.permissions import IsOwner, IsReviewVisibleOrOwner, CanLikeReview
+from analytics.services import get_top_positive_rbti_for_book
 from .models import QuoteNote, Review, ReviewLike
 from .serializers import (
     QuoteNoteCreateUpdateSerializer,
@@ -48,8 +49,7 @@ class ReviewListCreateAPIView(APIView):
         if rbti_code:
             code = rbti_code.strip()
             queryset = queryset.filter(
-                user__rbti_snapshots__is_current=True,
-                user__rbti_snapshots__rbti_type__code__iexact=code,
+                analysis_result__inferred_rbti_type__code__iexact=code,
             ).distinct()
 
         queryset = queryset.order_by("-like_count", "-created_at", "-id")
@@ -101,6 +101,53 @@ class LikedReviewListAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class BookTopPositiveRbtiAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, book_id):
+        stat = get_top_positive_rbti_for_book(book_id)
+        if not stat:
+            return Response(
+                {
+                    "book_id": book_id,
+                    "has_result": False,
+                    "top_rbti": None,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        representative = stat.representative_review
+        return Response(
+            {
+                "book_id": book_id,
+                "has_result": True,
+                "top_rbti": {
+                    "code": stat.rbti_type.code,
+                    "name": stat.rbti_type.name,
+                    "axis_1": stat.rbti_type.axis_1,
+                    "axis_2": stat.rbti_type.axis_2,
+                    "axis_3": stat.rbti_type.axis_3,
+                    "description": stat.rbti_type.description,
+                    "positive_ratio": stat.positive_ratio,
+                    "review_count": stat.review_count,
+                    "avg_review_score": stat.avg_review_score,
+                    "representative_review": (
+                        {
+                            "id": representative.id,
+                            "user_nickname": representative.user.nickname,
+                            "rating": representative.rating,
+                            "content": representative.content,
+                            "like_count": representative.like_count,
+                        }
+                        if representative
+                        else None
+                    ),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class ReviewDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -149,8 +196,10 @@ class QuoteNoteListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = QuoteNote.objects.select_related("book", "user_book").filter(
-            user=request.user
+        queryset = (
+            QuoteNote.objects.select_related("book", "user_book")
+            .prefetch_related("book__authors")
+            .filter(user=request.user)
         )
 
         book_id = request.query_params.get("book_id")

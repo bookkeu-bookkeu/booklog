@@ -44,3 +44,28 @@ class BookImportRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("isbn13은 13자리 숫자여야 합니다.")
 
         return isbn13
+
+
+class RbtiRecommendedBookSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    source = serializers.CharField(default="booklog")
+    external_api_id = serializers.CharField(allow_blank=True)
+    title = serializers.CharField()
+    contents = serializers.CharField(allow_blank=True)
+    url = serializers.CharField(allow_blank=True)
+    isbn = serializers.CharField(allow_blank=True)
+    isbn13 = serializers.CharField(allow_blank=True)
+    authors = serializers.ListField(child=serializers.CharField(), default=list)
+    publisher = serializers.CharField(allow_blank=True)
+    published_at = serializers.CharField(allow_blank=True)
+    thumbnail = serializers.CharField(allow_blank=True)
+    description = serializers.CharField(allow_blank=True)
+    category = serializers.CharField(allow_blank=True)
+    kdc = serializers.CharField(allow_blank=True)
+    subject = serializers.CharField(allow_blank=True)
+    is_in_library = serializers.BooleanField()
+    rbti_code = serializers.CharField()
+    rbti_name = serializers.CharField()
+    positive_ratio = serializers.FloatField()
+    review_count = serializers.IntegerField()
+    avg_review_score = serializers.FloatField()

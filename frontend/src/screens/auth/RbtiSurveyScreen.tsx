@@ -21,7 +21,12 @@ import {
   type RbtiSurveyQuestion,
 } from "../../api/rbti";
 
-export default function RbtiSurveyScreen() {
+type Props = {
+  isRequired?: boolean;
+  onCompleted?: () => void;
+};
+
+export default function RbtiSurveyScreen({ isRequired = false, onCompleted }: Props) {
   const navigation = useNavigation();
   const allowExitRef = useRef(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -133,6 +138,11 @@ export default function RbtiSurveyScreen() {
       return;
     }
 
+    if (isRequired) {
+      Alert.alert("RBTI 검사", "서비스 이용을 위해 RBTI 검사를 먼저 완료해주세요.");
+      return;
+    }
+
     allowExitRef.current = true;
     navigation.goBack();
   };
@@ -183,6 +193,10 @@ export default function RbtiSurveyScreen() {
             text: "확인",
             onPress: () => {
               allowExitRef.current = true;
+              if (onCompleted) {
+                onCompleted();
+                return;
+              }
               navigation.goBack();
             },
           },
@@ -290,7 +304,7 @@ export default function RbtiSurveyScreen() {
             disabled={isSubmitting}
             style={[
               styles.headerIconButton,
-              isSubmitting && styles.headerIconButtonDisabled,
+              (isSubmitting || isRequired) && styles.headerIconButtonDisabled,
             ]}
             hitSlop={8}
           >

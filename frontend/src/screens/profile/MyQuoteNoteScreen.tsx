@@ -14,11 +14,17 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import BookSummaryCard from '../../components/BookSummaryCard';
 import SearchBar from '../../components/SearchBar';
 import type { Book } from '../../navigation/types';
-import { getMyLibraryBooks, type UserLibraryBook } from '../../api/books';
-import { getQuoteNotes } from '../../api/reviews';
+import { getQuoteNotes, type QuoteNoteItem } from '../../api/reviews';
 import type { ProfileStackParamList } from '../../navigation/ProfileNavigator';
 
-type QuoteNoteBook = UserLibraryBook;
+type QuoteNoteBook = {
+	book_id: number;
+	book_title: string;
+	book_thumbnail_url: string;
+	book_isbn13: string;
+	book_publisher: string;
+	book_authors: string[];
+};
 
 export default function MyQuoteNoteScreen() {
 	const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
@@ -33,25 +39,8 @@ export default function MyQuoteNoteScreen() {
 		setLoadError('');
 
 		try {
-			const [readingBooks, doneBooks] = await Promise.all([
-				getMyLibraryBooks('READING'),
-				getMyLibraryBooks('DONE'),
-			]);
-
-			const merged = dedupeByBookId([...readingBooks, ...doneBooks]);
-
-			const booksWithQuoteNotes = await Promise.all(
-				merged.map(async (book) => {
-					try {
-						const quoteNotes = await getQuoteNotes(book.book_id);
-						return quoteNotes.length > 0 ? book : null;
-					} catch (error) {
-						return null;
-					}
-				}),
-			);
-
-			setBooks(booksWithQuoteNotes.filter((book): book is QuoteNoteBook => !!book));
+			const quoteNotes = await getQuoteNotes();
+			setBooks(mapQuoteNotesToBooks(quoteNotes));
 		} catch (error) {
 			setBooks([]);
 			setLoadError('필사 노트 도서 목록을 불러오지 못했습니다.');
@@ -109,7 +98,7 @@ export default function MyQuoteNoteScreen() {
 		<SafeAreaView style={styles.safeArea}>
 			<FlatList
 				data={filteredBooks}
-				keyExtractor={(item) => String(item.id)}
+				keyExtractor={(item) => String(item.book_id)}
 				renderItem={({ item }) => (
 					<View style={styles.cardItem}>
 						<BookSummaryCard
@@ -172,12 +161,19 @@ export default function MyQuoteNoteScreen() {
 	);
 }
 
-function dedupeByBookId(items: UserLibraryBook[]) {
-	const map = new Map<number, UserLibraryBook>();
+function mapQuoteNotesToBooks(items: QuoteNoteItem[]) {
+	const map = new Map<number, QuoteNoteBook>();
 
 	items.forEach((item) => {
-		if (!map.has(item.book_id)) {
-			map.set(item.book_id, item);
+		if (!map.has(item.book)) {
+			map.set(item.book, {
+				book_id: item.book,
+				book_title: item.book_title ?? '',
+				book_thumbnail_url: item.book_thumbnail_url ?? '',
+				book_isbn13: item.book_isbn13 ?? '',
+				book_publisher: item.book_publisher ?? '',
+				book_authors: item.book_authors ?? [],
+			});
 		}
 	});
 

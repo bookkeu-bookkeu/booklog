@@ -29,6 +29,10 @@ export interface QuoteNoteItem {
   user_nickname: string;
   book: number;
   book_title: string;
+  book_thumbnail_url?: string;
+  book_isbn13?: string;
+  book_publisher?: string;
+  book_authors?: string[];
   quoted_text: string;
   note?: string;
   page_number: number | null;
@@ -84,6 +88,31 @@ export interface BookRbtiFilterOption {
   my_review_count: number;
 }
 
+export interface BookTopPositiveRbti {
+  code: string;
+  name: string;
+  axis_1: string;
+  axis_2: string;
+  axis_3: string;
+  description: string;
+  positive_ratio: number;
+  review_count: number;
+  avg_review_score: number;
+  representative_review?: {
+    id: number;
+    user_nickname: string;
+    rating: number;
+    content: string;
+    like_count: number;
+  } | null;
+}
+
+export interface BookTopPositiveRbtiResponse {
+  book_id: number;
+  has_result: boolean;
+  top_rbti: BookTopPositiveRbti | null;
+}
+
 export async function getBookReviews(
   bookId?: number,
   options?: GetBookReviewsOptions
@@ -116,7 +145,9 @@ export async function unlikeReview(reviewId: number): Promise<ReviewLikeResponse
 }
 
 export async function createReview(payload: CreateReviewPayload): Promise<ReviewItem> {
-  const response = await api.post<ReviewItem>('/reviews/', payload);
+  const response = await api.post<ReviewItem>('/reviews/', payload, {
+    timeout: 120000,
+  });
   return response.data;
 }
 
@@ -124,7 +155,9 @@ export async function updateReview(
   reviewId: number,
   payload: UpdateReviewPayload
 ): Promise<ReviewItem> {
-  const response = await api.patch<ReviewItem>(`/reviews/${reviewId}/`, payload);
+  const response = await api.patch<ReviewItem>(`/reviews/${reviewId}/`, payload, {
+    timeout: 120000,
+  });
   return response.data;
 }
 
@@ -142,11 +175,19 @@ export async function getBookRbtiFilters(bookId: number): Promise<BookRbtiFilter
   return response.data ?? [];
 }
 
-export async function getQuoteNotes(bookId: number): Promise<QuoteNoteItem[]> {
+export async function getBookTopPositiveRbti(
+  bookId: number
+): Promise<BookTopPositiveRbtiResponse> {
+  const response = await api.get<BookTopPositiveRbtiResponse>(
+    `/reviews/books/${bookId}/top-positive-rbti/`
+  );
+
+  return response.data;
+}
+
+export async function getQuoteNotes(bookId?: number): Promise<QuoteNoteItem[]> {
   const response = await api.get<QuoteNoteItem[]>('/reviews/quotes/', {
-    params: {
-      book_id: bookId,
-    },
+    params: typeof bookId === 'number' ? { book_id: bookId } : undefined,
   });
 
   return response.data ?? [];

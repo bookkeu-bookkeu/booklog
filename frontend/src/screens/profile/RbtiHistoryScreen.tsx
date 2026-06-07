@@ -87,7 +87,7 @@ export default function RbtiHistoryScreen() {
 
 function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
   const sourceLabel = getHistorySourceLabel(item.source_type);
-  const scoreRows = buildHistoryScoreRows(item, item.source_type === 'ai_review');
+  const scoreRows = buildHistoryScoreRows(item, hasAnyScoreChange(item.score_changes));
 
   return (
     <View style={styles.card}>
@@ -112,8 +112,8 @@ function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
             {scoreRows.map((row) => (
               <View key={row.id} style={styles.scorePill}>
                 <Text style={styles.scoreLabel}>{row.label}</Text>
-                <Text style={styles.scoreValue}>
-                  {row.value}%
+                <View style={styles.scoreValueWrap}>
+                  <Text style={styles.scoreValue}>{row.value}%</Text>
                   {!!row.deltaText && (
                     <Text
                       style={[
@@ -125,7 +125,7 @@ function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
                       {row.deltaText}
                     </Text>
                   )}
-                </Text>
+                </View>
               </View>
             ))}
           </View>
@@ -133,6 +133,16 @@ function RbtiHistoryCard({ item }: { item: RbtiHistoryItem }) {
       </View>
     </View>
   );
+}
+
+function hasAnyScoreChange(scoreChanges: RbtiHistoryItem['score_changes']) {
+  if (!scoreChanges) {
+    return false;
+  }
+
+  return Object.values(scoreChanges).some((change) => (
+    typeof change?.delta === 'number' && change.delta !== 0
+  ));
 }
 
 function getHistorySourceLabel(sourceType?: string) {
@@ -334,13 +344,18 @@ const styles = StyleSheet.create({
     color: '#6B6E79',
     marginRight: 5,
   },
+  scoreValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   scoreValue: {
     fontSize: 11,
     fontWeight: '800',
     color: '#E67F1E',
   },
   scoreDeltaValue: {
-    marginLeft: 2,
+    fontSize: 11,
+    fontWeight: '800',
     color: '#1F2025',
   },
   scoreDeltaIncrease: {

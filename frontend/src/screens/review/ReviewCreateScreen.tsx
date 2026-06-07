@@ -40,7 +40,7 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
   const book = route?.params?.book;
   const [rating, setRating] = useState(0);
   const [starRowWidth, setStarRowWidth] = useState(0);
-  const [visibility, setVisibility] = useState<'public' | 'private'>('private');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [content, setContent] = useState('');
   const [hasUserTyped, setHasUserTyped] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,8 +80,16 @@ export default function ReviewCreateScreen({ navigation, route }: Props) {
   };
 
   const resolveBookId = async () => {
+    const maybeInternalId = (book as { id?: number | string } | undefined)?.id;
+    if (
+      book?.source === 'booklog' &&
+      (typeof maybeInternalId === 'number' || /^\d+$/.test(String(maybeInternalId ?? '')))
+    ) {
+      return Number(maybeInternalId);
+    }
+
     const rawExternalId = `${book?.external_api_id ?? ''}`.trim();
-    if (/^\d+$/.test(rawExternalId)) {
+    if (book?.source === 'library' && /^\d+$/.test(rawExternalId)) {
       return Number(rawExternalId);
     }
 

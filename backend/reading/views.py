@@ -53,6 +53,13 @@ class UserBookListCreateAPIView(APIView):
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
+    def delete(self, request):
+        deleted_count, _ = UserBook.objects.filter(user=request.user).delete()
+        return Response(
+            {"deleted_count": deleted_count},
+            status=status.HTTP_200_OK,
+        )
+
 
 class UserBookDetailAPIView(APIView):
     permission_classes = [IsAuthenticated, IsOwner]

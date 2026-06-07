@@ -52,20 +52,18 @@ class BookRbtiFilterOptionAPIView(APIView):
         queryset = (
             RbtiType.objects.annotate(
                 public_review_count=Count(
-                    "user_snapshots__user__reviews",
+                    "review_analysis_results",
                     filter=Q(
-                        user_snapshots__is_current=True,
-                        user_snapshots__user__reviews__book_id=book_id,
-                        user_snapshots__user__reviews__visibility=Review.VISIBILITY_PUBLIC,
+                        review_analysis_results__review__book_id=book_id,
+                        review_analysis_results__review__visibility=Review.VISIBILITY_PUBLIC,
                     ),
                     distinct=True,
                 ),
                 my_review_count=Count(
-                    "user_snapshots__user__reviews",
+                    "review_analysis_results",
                     filter=Q(
-                        user_snapshots__is_current=True,
-                        user_snapshots__user__reviews__book_id=book_id,
-                        user_snapshots__user=request.user,
+                        review_analysis_results__review__book_id=book_id,
+                        review_analysis_results__review__user=request.user,
                     ),
                     distinct=True,
                 ),

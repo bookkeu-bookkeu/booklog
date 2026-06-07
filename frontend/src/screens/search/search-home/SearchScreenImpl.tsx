@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -8,10 +9,11 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useScrollToTop } from '@react-navigation/native';
+import { useFocusEffect, useScrollToTop } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Book, SearchStackParamList } from '../../../navigation/types';
 import { getCurrentUserRbti } from '../../../api/rbti';
+import { getRbtiRecommendedBooks, RbtiRecommendedBook } from '../../../api/books';
 import BookSummaryCard from '../../../components/BookSummaryCard';
 
 type SearchStackWithBookDetail = SearchStackParamList & {
@@ -41,8 +43,6 @@ type BookLike = Book & {
   is_in_shelf?: boolean;
 };
 
-const mockRecommendedBooks: BookLike[] = [];
-
 const RBTI_NAME_BY_CODE: Record<string, string> = {
   RAN: '구조를 받아들이는 독해가',
   RAS: '핵심을 흡수하는 요약가',
@@ -56,7 +56,8 @@ const RBTI_NAME_BY_CODE: Record<string, string> = {
 
 export default function SearchScreen({ navigation }: Props) {
   const listRef = useRef<FlatList<BookLike>>(null);
-  const [recommendedBooks] = useState<BookLike[]>(mockRecommendedBooks);
+  const [recommendedBooks, setRecommendedBooks] = useState<BookLike[]>([]);
+  const [isRecommendedBooksLoading, setIsRecommendedBooksLoading] = useState(true);
   const [rbtiName, setRbtiName] = useState<string>('');
   useScrollToTop(listRef);
 
@@ -103,6 +104,30 @@ export default function SearchScreen({ navigation }: Props) {
     };
   }, []);
 
+  const fetchRecommendedBooks = useCallback(async () => {
+    try {
+      setIsRecommendedBooksLoading(true);
+      const response = await getRbtiRecommendedBooks(10);
+      setRecommendedBooks(response.results.map(mapRecommendedBookToBookLike));
+
+      const apiRbtiName = response.rbti_name?.trim();
+      if (apiRbtiName) {
+        setRbtiName(apiRbtiName);
+      }
+    } catch (error) {
+      console.log('RBTI 추천 도서 조회 실패', error);
+      setRecommendedBooks([]);
+    } finally {
+      setIsRecommendedBooksLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchRecommendedBooks();
+    }, [fetchRecommendedBooks])
+  );
+
   const renderHeader = () => (
     <View style={styles.headerWrapper}>
       <Pressable
@@ -140,10 +165,19 @@ export default function SearchScreen({ navigation }: Props) {
 
   const renderEmpty = () => (
     <View style={styles.emptyBox}>
-      <Text style={styles.emptyTitle}>추천 도서 준비 중이에요</Text>
-      <Text style={styles.emptyDescription}>
-        RBTI 추천 API가 연결되면 이 화면에 도서가 표시됩니다.
-      </Text>
+      {isRecommendedBooksLoading ? (
+        <>
+          <ActivityIndicator size="small" color="#F5C24B" />
+          <Text style={styles.emptyTitle}>추천 도서를 불러오는 중이에요</Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.emptyTitle}>추천 도서 준비 중이에요</Text>
+          <Text style={styles.emptyDescription}>
+            RBTI 유형 설정 후 공개 리뷰가 쌓이면 도서가 표시됩니다.
+          </Text>
+        </>
+      )}
     </View>
   );
 
@@ -201,6 +235,27 @@ function ResultCard({ book, onPress }: ResultCardProps) {
       showAddedBadge={isAdded}
     />
   );
+}
+
+function mapRecommendedBookToBookLike(item: RbtiRecommendedBook): BookLike {
+  const isbn13 = item.isbn13?.trim() || '';
+
+  return {
+    ...item,
+    id: item.id,
+    source: item.source || 'booklog',
+    external_api_id: item.external_api_id || String(item.id),
+    title: item.title?.trim() || '제목 없음',
+    contents: item.contents ?? item.description ?? '',
+    url: item.url ?? '',
+    isbn: item.isbn || isbn13,
+    isbn13,
+    authors: item.authors ?? [],
+    publisher: item.publisher?.trim() || '출판사',
+    published_at: item.published_at ?? '',
+    thumbnail: item.thumbnail?.trim() || '',
+    is_in_library: item.is_in_library,
+  };
 }
 
 function getAuthorText(book: BookLike) {

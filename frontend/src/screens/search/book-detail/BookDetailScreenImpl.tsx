@@ -27,8 +27,14 @@ import {
   UpdateLibraryBookPayload,
   UserLibraryBook,
 } from '../../../api/books';
-import { getBookReviews, ReviewItem } from '../../../api/reviews';
-import { getQuoteNotes, QuoteNoteItem } from '../../../api/reviews';
+import {
+  BookTopPositiveRbti,
+  getBookReviews,
+  getBookTopPositiveRbti,
+  getQuoteNotes,
+  QuoteNoteItem,
+  ReviewItem,
+} from '../../../api/reviews';
 import { getCurrentUserRbti } from '../../../api/rbti';
 import { OPPOSITE_RBTI_CODE, RBTI_TYPE_CHIPS } from './constants';
 import {
@@ -91,6 +97,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
   const [importedBookId, setImportedBookId] = useState<number | null>(null);
   const [quoteNotes, setQuoteNotes] = useState<QuoteNoteItem[]>([]);
   const [myReview, setMyReview] = useState<ReviewItem | null>(null);
+  const [topPositiveRbti, setTopPositiveRbti] = useState<BookTopPositiveRbti | null>(null);
   const [draftRating, setDraftRating] = useState(0);
   const [coverSize, setCoverSize] = useState(DEFAULT_COVER_SIZE);
 
@@ -176,6 +183,16 @@ export default function BookDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  const fetchTopPositiveRbti = async (bookId: number) => {
+    try {
+      const response = await getBookTopPositiveRbti(bookId);
+      setTopPositiveRbti(response.top_rbti);
+    } catch (error) {
+      console.log('책별 긍정 RBTI 조회 실패', error);
+      setTopPositiveRbti(null);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -215,6 +232,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
         }
         await fetchQuoteNotes(importedBook.id);
         await fetchMyReview(importedBook.id);
+        await fetchTopPositiveRbti(importedBook.id);
         let oppositeCode = '';
 
         try {
@@ -263,6 +281,7 @@ export default function BookDetailScreen({ navigation, route }: Props) {
       if (importedBookId) {
         void fetchQuoteNotes(importedBookId);
         void fetchMyReview(importedBookId);
+        void fetchTopPositiveRbti(importedBookId);
       }
     }, [importedBookId])
   );
@@ -726,6 +745,24 @@ export default function BookDetailScreen({ navigation, route }: Props) {
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>책 리뷰</Text>
+
+            {topPositiveRbti ? (
+              <View style={styles.positiveRbtiBox}>
+                <View style={styles.positiveRbtiIcon}>
+                  <Ionicons name="sparkles" size={18} color="#F29A2E" />
+                </View>
+
+                <View style={styles.positiveRbtiTextWrap}>
+                  <Text style={styles.positiveRbtiLabel}>가장 긍정적으로 평가한 유형</Text>
+                  <Text style={styles.positiveRbtiTitle} numberOfLines={1}>
+                    {topPositiveRbti.name} · {topPositiveRbti.positive_ratio.toFixed(1)}%
+                  </Text>
+                  <Text style={styles.positiveRbtiMeta}>
+                    공개 리뷰 {topPositiveRbti.review_count}개 기준
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.chipsWrap}>
               {RBTI_TYPE_CHIPS.map((chip) => (

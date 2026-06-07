@@ -4,6 +4,7 @@ from .views import (
     QuoteNoteDetailAPIView,
     QuoteNoteListCreateAPIView,
     LikedReviewListAPIView,
+    BookTopPositiveRbtiAPIView,
     ReviewDetailAPIView,
     ReviewLikeAPIView,
     ReviewListCreateAPIView,
@@ -12,6 +13,11 @@ from .views import (
 urlpatterns = [
     path("", ReviewListCreateAPIView.as_view(), name="review-list-create"),
     path("liked/", LikedReviewListAPIView.as_view(), name="liked-review-list"),
+    path(
+        "books/<int:book_id>/top-positive-rbti/",
+        BookTopPositiveRbtiAPIView.as_view(),
+        name="book-top-positive-rbti",
+    ),
     path("<int:pk>/", ReviewDetailAPIView.as_view(), name="review-detail"),
     path("<int:pk>/like/", ReviewLikeAPIView.as_view(), name="review-like"),
 

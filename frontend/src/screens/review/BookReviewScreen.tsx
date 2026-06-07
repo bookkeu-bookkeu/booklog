@@ -13,8 +13,10 @@ import { SearchStackParamList } from '../../navigation/types';
 import { importBookByIsbn13 } from '../../api/books';
 import {
   BookRbtiFilterOption,
+  BookTopPositiveRbti,
   getBookRbtiFilters,
   getBookReviews,
+  getBookTopPositiveRbti,
   getLikedReviews,
   GetBookReviewsOptions,
   likeReview,
@@ -59,6 +61,7 @@ export default function BookReviewScreen({ navigation, route }: Props) {
   const [pendingLikeIds, setPendingLikeIds] = useState<number[]>([]);
   const [filters, setFilters] = useState<ReviewFilter[]>(DEFAULT_FILTERS);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [topPositiveRbti, setTopPositiveRbti] = useState<BookTopPositiveRbti | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string>('');
 
@@ -132,26 +135,31 @@ export default function BookReviewScreen({ navigation, route }: Props) {
   useEffect(() => {
     let mounted = true;
 
-    const fetchFilters = async () => {
+    const fetchBookRbtiSummary = async () => {
       if (!bookId) {
         return;
       }
 
       try {
-        const rbtiOptions = await getBookRbtiFilters(bookId);
+        const [rbtiOptions, positiveRbtiResponse] = await Promise.all([
+          getBookRbtiFilters(bookId),
+          getBookTopPositiveRbti(bookId),
+        ]);
 
         if (mounted) {
           setFilters(buildRbtiFilters(rbtiOptions));
+          setTopPositiveRbti(positiveRbtiResponse.top_rbti);
         }
       } catch (error) {
-        console.log('RBTI 필터 조회 실패', error);
+        console.log('RBTI 리뷰 요약 조회 실패', error);
         if (mounted) {
           setFilters(DEFAULT_FILTERS);
+          setTopPositiveRbti(null);
         }
       }
     };
 
-    fetchFilters();
+    fetchBookRbtiSummary();
 
     return () => {
       mounted = false;
@@ -357,6 +365,29 @@ export default function BookReviewScreen({ navigation, route }: Props) {
           );
         })}
       </View>
+
+      {topPositiveRbti ? (
+        <Pressable
+          style={styles.positiveSummaryCard}
+          onPress={() => setSelectedFilter(`rbti-${topPositiveRbti.code}`)}
+        >
+          <View style={styles.positiveSummaryIcon}>
+            <Ionicons name="sparkles" size={18} color="#F29A2E" />
+          </View>
+
+          <View style={styles.positiveSummaryTextWrap}>
+            <Text style={styles.positiveSummaryLabel}>가장 긍정적으로 평가한 유형</Text>
+            <Text style={styles.positiveSummaryTitle}>
+              {topPositiveRbti.name} · {topPositiveRbti.positive_ratio.toFixed(1)}%
+            </Text>
+            <Text style={styles.positiveSummaryMeta}>
+              공개 리뷰 {topPositiveRbti.review_count}개 기준
+            </Text>
+          </View>
+
+          <Ionicons name="chevron-forward" size={18} color="#B8A06B" />
+        </Pressable>
+      ) : null}
     </View>
   );
 
@@ -515,6 +546,47 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: '#FFFFFF',
+  },
+  positiveSummaryCard: {
+    minHeight: 78,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#FFE4A8',
+  },
+  positiveSummaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF4DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  positiveSummaryTextWrap: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  positiveSummaryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9A7430',
+    marginBottom: 3,
+  },
+  positiveSummaryTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#292C31',
+    marginBottom: 2,
+  },
+  positiveSummaryMeta: {
+    fontSize: 12,
+    color: '#858B96',
   },
   reviewCard: {
     flexDirection: 'row',

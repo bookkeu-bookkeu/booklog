@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -12,7 +13,11 @@ import {
 import { useFocusEffect, useNavigation, useScrollToTop } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getMe } from '../../api/auth';
-import { getMyLibraryBooks } from '../../api/books';
+import {
+  getMyLibraryBooks,
+  getRbtiRecommendedBooks,
+  RbtiRecommendedBook,
+} from '../../api/books';
 import { getBookReviews } from '../../api/reviews';
 import {
   getCurrentUserRbti,
@@ -36,6 +41,12 @@ type RbtiAxis = {
 type HomeBookCardItem = LibraryBookCardItem & {
   id: string;
   detailBook: Book;
+};
+
+type RbtiRecommendationCardItem = HomeBookCardItem & {
+  positiveRatio: number;
+  reviewCount: number;
+  rbtiName: string;
 };
 
 function mapLibraryBookToHomeItem(item: {
@@ -71,6 +82,35 @@ function mapLibraryBookToHomeItem(item: {
       published_at: '',
       thumbnail,
       is_in_library: true,
+    },
+  };
+}
+
+function mapRecommendedBookToHomeItem(item: RbtiRecommendedBook): RbtiRecommendationCardItem {
+  const title = item.title?.trim() || '제목 없음';
+  const publisher = item.publisher?.trim() || '출판사';
+  const thumbnail = item.thumbnail?.trim() || '';
+  const isbn13 = item.isbn13?.trim() || '';
+  const authors = item.authors ?? [];
+
+  return {
+    id: String(item.id),
+    title,
+    author: authors.length ? authors.join(', ') : '저자 미상',
+    publisher,
+    thumbnail: thumbnail || undefined,
+    positiveRatio: item.positive_ratio,
+    reviewCount: item.review_count,
+    rbtiName: item.rbti_name,
+    detailBook: {
+      ...item,
+      title,
+      publisher,
+      thumbnail,
+      isbn: item.isbn || isbn13,
+      isbn13,
+      authors,
+      is_in_library: item.is_in_library,
     },
   };
 }
@@ -157,7 +197,7 @@ function buildRbtiAxes(
 ): RbtiAxis[] {
   const definitionsByAxis = new Map(axisDefinitions.map((definition) => [definition.axis, definition]));
   const rbtiCode = currentRbti.rbti_code?.trim().toUpperCase() ?? '';
-  const shouldShowDelta = currentRbti.source_type === 'ai_review';
+  const shouldShowDelta = hasAnyScoreChange(currentRbti.score_changes);
 
   const axisConfigs = [
     {
@@ -238,12 +278,24 @@ function buildRbtiAxes(
   });
 }
 
+function hasAnyScoreChange(scoreChanges: CurrentUserRbti['score_changes']) {
+  if (!scoreChanges) {
+    return false;
+  }
+
+  return Object.values(scoreChanges).some((change) => (
+    typeof change?.delta === 'number' && change.delta !== 0
+  ));
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const scrollViewRef = useRef<ScrollView>(null);
   const [readingBooks, setReadingBooks] = useState<HomeBookCardItem[]>([]);
+  const [recommendedBooks, setRecommendedBooks] = useState<RbtiRecommendationCardItem[]>([]);
   const [waitingReviewBooks, setWaitingReviewBooks] = useState<HomeBookCardItem[]>([]);
   const [isReadingBooksLoading, setIsReadingBooksLoading] = useState(true);
+  const [isRecommendedBooksLoading, setIsRecommendedBooksLoading] = useState(true);
   const [isWaitingReviewBooksLoading, setIsWaitingReviewBooksLoading] = useState(true);
   const [userRbtiName, setUserRbtiName] = useState<string>('');
   const [rbtiAxes, setRbtiAxes] = useState<RbtiAxis[]>([]);
@@ -252,14 +304,17 @@ export default function HomeScreen() {
   const fetchHomeBooks = useCallback(async () => {
     try {
       setIsReadingBooksLoading(true);
+      setIsRecommendedBooksLoading(true);
       setIsWaitingReviewBooksLoading(true);
 
-      const [readingResponse, doneResponse] = await Promise.all([
+      const [readingResponse, doneResponse, recommendationResponse] = await Promise.all([
         getMyLibraryBooks('READING'),
         getMyLibraryBooks('DONE'),
+        getRbtiRecommendedBooks(10),
       ]);
 
       setReadingBooks(readingResponse.map(mapLibraryBookToHomeItem));
+      setRecommendedBooks(recommendationResponse.results.map(mapRecommendedBookToHomeItem));
 
       const reviewStates = await Promise.all(
         doneResponse.map(async (item) => {
@@ -310,9 +365,11 @@ export default function HomeScreen() {
       }
     } catch (error) {
       setReadingBooks([]);
+      setRecommendedBooks([]);
       setWaitingReviewBooks([]);
     } finally {
       setIsReadingBooksLoading(false);
+      setIsRecommendedBooksLoading(false);
       setIsWaitingReviewBooksLoading(false);
     }
   }, []);
@@ -335,7 +392,11 @@ export default function HomeScreen() {
           rbtiName={userRbtiName}
           nickname={userNickname}
           rightAccessory={(
-            <Pressable style={userProfileHeaderStyles.bellButton} hitSlop={10}>
+            <Pressable
+              style={userProfileHeaderStyles.bellButton}
+              hitSlop={10}
+              onPress={() => Alert.alert('알림', '새 알림이 없습니다.')}
+            >
               <Ionicons name="notifications" size={22} color="#2F3238" />
               <View style={userProfileHeaderStyles.bellDot} />
             </Pressable>
@@ -374,6 +435,18 @@ export default function HomeScreen() {
           />
         ) : !isWaitingReviewBooksLoading && waitingReviewBooks.length === 0 ? (
           <ReadingBooksEmptySection onPressAddBooks={() => navigation.navigate('SearchTab')} />
+        ) : null}
+
+        {isRecommendedBooksLoading ? (
+          <View style={styles.readingLoadingWrap}>
+            <ActivityIndicator size="small" color="#F5C24B" />
+          </View>
+        ) : recommendedBooks.length > 0 ? (
+          <RbtiRecommendationSection
+            books={recommendedBooks}
+            rbtiName={userRbtiName}
+            onPressBook={(book) => navigation.navigate('BookDetail', { book: book.detailBook })}
+          />
         ) : null}
 
         {isWaitingReviewBooksLoading ? (
@@ -429,8 +502,8 @@ function RbtiBar({ item }: { item: RbtiAxis }) {
               },
             ]}
           />
-          <Text style={styles.rbtiValue}>
-            {item.valueText}
+          <View style={styles.rbtiValueWrap}>
+            <Text style={styles.rbtiValue}>{item.valueText}</Text>
             {!!item.deltaText && (
               <Text
                 style={[
@@ -442,7 +515,7 @@ function RbtiBar({ item }: { item: RbtiAxis }) {
                 {item.deltaText}
               </Text>
             )}
-          </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -488,6 +561,50 @@ function HorizontalBookSection({
 function HomeBookCard({ item, onPress }: { item: HomeBookCardItem; onPress?: () => void }) {
   return (
     <LibraryBookCard book={item} onPress={onPress} />
+  );
+}
+
+function RbtiRecommendationSection({
+  books,
+  rbtiName,
+  onPressBook,
+}: {
+  books: RbtiRecommendationCardItem[];
+  rbtiName: string;
+  onPressBook: (book: RbtiRecommendationCardItem) => void;
+}) {
+  const title = rbtiName ? `${rbtiName} 유형이 좋아한 책` : '내 유형이 좋아한 책';
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <View>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.sectionDescription}>평균 긍정률 70% 이상</Text>
+        </View>
+      </View>
+
+      <FlatList
+        data={books}
+        horizontal
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => (
+          <View style={[styles.bookCardWrap, index === books.length - 1 && styles.lastCardWrap]}>
+            <HomeBookCard item={item} onPress={() => onPressBook(item)} />
+            <View style={styles.recommendMetaBox}>
+              <Text style={styles.recommendMetaText}>
+                긍정률 {item.positiveRatio.toFixed(1)}%
+              </Text>
+              <Text style={styles.recommendMetaSubText}>
+                리뷰 {item.reviewCount}개
+              </Text>
+            </View>
+          </View>
+        )}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.horizontalListContent}
+      />
+    </View>
   );
 }
 
@@ -539,6 +656,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#F19B25',
+  },
+  sectionDescription: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#8B909B',
   },
 
   rbtiBox: {
@@ -592,15 +714,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
-  rbtiValue: {
+  rbtiValueWrap: {
     position: 'absolute',
     right: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rbtiValue: {
     fontSize: 12,
     fontWeight: '700',
     color: '#E67F1E',
   },
   rbtiDeltaValue: {
-    marginLeft: 2,
+    fontSize: 12,
+    fontWeight: '700',
     color: '#1F2025',
   },
   rbtiDeltaIncrease: {
@@ -664,5 +791,23 @@ const styles = StyleSheet.create({
   },
   lastCardWrap: {
     marginRight: 26,
+  },
+  recommendMetaBox: {
+    marginTop: 8,
+    minHeight: 38,
+    borderRadius: 8,
+    backgroundColor: '#FFF8E8',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  recommendMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E67F1E',
+  },
+  recommendMetaSubText: {
+    marginTop: 2,
+    fontSize: 11,
+    color: '#8B909B',
   },
 });

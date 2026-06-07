@@ -30,6 +30,22 @@ export interface UpdateLibraryBookPayload {
   is_favorite?: boolean;
 }
 
+export type RbtiRecommendedBook = Book & {
+  id: number;
+  rbti_code: string;
+  rbti_name: string;
+  positive_ratio: number;
+  review_count: number;
+  avg_review_score: number;
+};
+
+export interface RbtiRecommendedBooksResponse {
+  rbti_code: string | null;
+  rbti_name: string | null;
+  positive_threshold: number;
+  results: RbtiRecommendedBook[];
+}
+
 export async function searchBooks(query: string, page = 1, size = 20): Promise<BookSearchResponse> {
   const response = await api.get<BookSearchResponse>('/books/search/', {
     params: {
@@ -47,15 +63,14 @@ export async function searchBooks(query: string, page = 1, size = 20): Promise<B
  * - 백엔드에서 로그인 사용자 기준 RBTI 추천 도서를 내려주는 엔드포인트가 존재
  * - 응답 형식은 search와 동일하게 results 배열 포함
  */
-export async function getRbtiRecommendedBooks(page = 1, size = 10): Promise<Book[]> {
-  const response = await api.get<BookSearchResponse>('/books/recommendations/rbti/', {
+export async function getRbtiRecommendedBooks(size = 10): Promise<RbtiRecommendedBooksResponse> {
+  const response = await api.get<RbtiRecommendedBooksResponse>('/books/recommendations/rbti/', {
     params: {
-      page,
       size,
     },
   });
 
-  return response.data.results ?? [];
+  return response.data;
 }
 
 export async function getMyLibraryBooks(shelf?: UserShelfCode): Promise<UserLibraryBook[]> {
@@ -111,6 +126,11 @@ export async function addBookToLibrary(
 
 export async function removeBookFromLibrary(userLibraryBookId: number): Promise<void> {
   await api.delete(`/reading/user-books/${userLibraryBookId}/`);
+}
+
+export async function resetMyLibrary(): Promise<{ deleted_count: number }> {
+  const response = await api.delete<{ deleted_count: number }>('/reading/user-books/');
+  return response.data;
 }
 
 export async function updateLibraryBookShelf(

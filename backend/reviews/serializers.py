@@ -88,6 +88,13 @@ class QuoteNoteCreateUpdateSerializer(serializers.Serializer):
 class QuoteNoteListSerializer(serializers.ModelSerializer):
     user_nickname = serializers.CharField(source="user.nickname", read_only=True)
     book_title = serializers.CharField(source="book.title", read_only=True)
+    book_thumbnail_url = serializers.CharField(source="book.thumbnail_url", read_only=True)
+    book_isbn13 = serializers.CharField(source="book.isbn13", read_only=True)
+    book_publisher = serializers.CharField(source="book.publisher", read_only=True)
+    book_authors = serializers.SerializerMethodField()
+
+    def get_book_authors(self, obj):
+        return [author.name for author in obj.book.authors.all()]
 
     class Meta:
         model = QuoteNote
@@ -96,6 +103,10 @@ class QuoteNoteListSerializer(serializers.ModelSerializer):
             "user_nickname",
             "book",
             "book_title",
+            "book_thumbnail_url",
+            "book_isbn13",
+            "book_publisher",
+            "book_authors",
             "quoted_text",
             "note",
             "page_number",

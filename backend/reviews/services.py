@@ -1,13 +1,15 @@
 import logging
-import threading
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db import close_old_connections
 
 from books.models import Book
 from analytics.services import (
     analyze_review_and_update_user_rbti,
+    rebuild_book_rbti_stats,
     rebuild_user_rbti_from_review_analyses,
+    save_rating_based_review_analysis,
 )
 from reading.models import UserBook
 from .models import QuoteNote, Review, ReviewLike
@@ -32,31 +34,40 @@ class ReviewService:
             content=content,
             visibility=visibility,
         )
-        transaction.on_commit(lambda: _start_review_analysis_thread(review.id))
+        save_rating_based_review_analysis(review)
+        _analyze_review_safely(review.id)
         return review
 
     @staticmethod
     def update_review(*, review, rating=None, content=None, visibility=None):
         should_analyze = False
+        should_rebuild_stats = False
         if rating is not None:
             should_analyze = should_analyze or review.rating != rating
+            should_rebuild_stats = should_rebuild_stats or review.rating != rating
             review.rating = rating
         if content is not None:
             should_analyze = should_analyze or review.content != content
             review.content = content
         if visibility is not None:
+            should_rebuild_stats = should_rebuild_stats or review.visibility != visibility
             review.visibility = visibility
         review.save()
         if should_analyze:
-            transaction.on_commit(lambda: _start_review_analysis_thread(review.id))
+            save_rating_based_review_analysis(review)
+            _analyze_review_safely(review.id)
+        elif should_rebuild_stats:
+            rebuild_book_rbti_stats(review.book_id)
         return review
 
     @staticmethod
     @transaction.atomic
     def delete_review(*, review):
         user = review.user
+        book_id = review.book_id
         review.delete()
         rebuild_user_rbti_from_review_analyses(user)
+        rebuild_book_rbti_stats(book_id)
 
 
 class QuoteNoteService:
@@ -127,19 +138,12 @@ class ReviewLikeService:
         return deleted_count > 0
 
 
-def _start_review_analysis_thread(review_id):
-    thread = threading.Thread(
-        target=_analyze_review_safely,
-        args=(review_id,),
-        daemon=True,
-        name=f"review-analysis-{review_id}",
-    )
-    thread.start()
-
-
 def _analyze_review_safely(review_id):
     try:
+        close_old_connections()
         review = Review.objects.select_related("user").get(id=review_id)
         analyze_review_and_update_user_rbti(review)
     except Exception:
         logger.exception("Failed to analyze review for RBTI update: review_id=%s", review_id)
+    finally:
+        close_old_connections()

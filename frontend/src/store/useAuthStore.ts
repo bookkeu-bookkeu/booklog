@@ -19,12 +19,14 @@ interface AuthState {
   accessToken: string | null;
   isLoggedIn: boolean;
   isHydrating: boolean;
+  shouldPromptRbtiAfterLogin: boolean;
 
   hydrate: () => Promise<void>;
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => Promise<void>;
   setAccessToken: (token: string | null) => void;
   setUser: (user: User | null) => void;
+  setShouldPromptRbtiAfterLogin: (value: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -32,9 +34,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   isLoggedIn: false,
   isHydrating: true,
+  shouldPromptRbtiAfterLogin: false,
 
   setAccessToken: (token) => set({ accessToken: token }),
   setUser: (user) => set({ user }),
+  setShouldPromptRbtiAfterLogin: (value) => set({ shouldPromptRbtiAfterLogin: value }),
 
   hydrate: async () => {
     try {
@@ -46,6 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           accessToken: null,
           isLoggedIn: false,
           isHydrating: false,
+          shouldPromptRbtiAfterLogin: false,
         });
         return;
       }
@@ -57,6 +62,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         accessToken,
         isLoggedIn: true,
         isHydrating: false,
+        shouldPromptRbtiAfterLogin: false,
       });
     } catch (error) {
       await clearTokens();
@@ -65,6 +71,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         accessToken: null,
         isLoggedIn: false,
         isHydrating: false,
+        shouldPromptRbtiAfterLogin: false,
       });
     }
   },
@@ -88,6 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken,
       isLoggedIn: true,
       isHydrating: false,
+      shouldPromptRbtiAfterLogin: true,
     });
   },
 
@@ -99,6 +107,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       accessToken: null,
       isLoggedIn: false,
       isHydrating: false,
+      shouldPromptRbtiAfterLogin: false,
     });
   },
 }));

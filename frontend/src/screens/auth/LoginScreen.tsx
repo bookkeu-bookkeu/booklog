@@ -4,6 +4,7 @@ import {
   Alert,
   Keyboard,
   KeyboardAvoidingView,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,8 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuthStore } from '../../store/useAuthStore';
+
+const loginHeroImage = require('../../../assets/login-reading-hero.png');
 
 export default function LoginScreen() {
   const login = useAuthStore((state) => state.login);
@@ -76,7 +79,7 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.topBanner}>
-              <Ionicons name="image-outline" size={42} color="#FFD7A2" />
+              <Image source={loginHeroImage} style={styles.heroImage} resizeMode="contain" />
             </View>
 
             <View
@@ -213,6 +216,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF6EA',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
 
   formSection: {

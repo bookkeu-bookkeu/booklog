@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,15 +12,27 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { deleteMe, getMe } from '../../api/auth';
+import { deleteMe, getMe, updateMe } from '../../api/auth';
+import { resetMyLibrary } from '../../api/books';
 import { useAuthStore } from '../../store/useAuthStore';
+
+type AccountModalType = 'email' | 'password' | null;
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const logout = useAuthStore((state) => state.logout);
+  const setUser = useAuthStore((state) => state.setUser);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [accountModalType, setAccountModalType] = useState<AccountModalType>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [nextEmail, setNextEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
+  const [isPushEnabled, setIsPushEnabled] = useState(true);
+  const [isResettingLibrary, setIsResettingLibrary] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -112,6 +125,146 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const handleTogglePushPress = () => {
+    setIsPushEnabled((prev) => {
+      const next = !prev;
+      Alert.alert('알림 설정', `푸시 알림이 ${next ? '켜졌습니다.' : '꺼졌습니다.'}`);
+      return next;
+    });
+  };
+
+  const handleResetLibraryPress = () => {
+    if (isResettingLibrary) {
+      return;
+    }
+
+    Alert.alert('내서재 초기화', '내서재에 담긴 책 기록을 모두 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '초기화',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            try {
+              setIsResettingLibrary(true);
+              const result = await resetMyLibrary();
+              Alert.alert('완료', `내서재 ${result.deleted_count}건을 초기화했습니다.`);
+            } catch (error) {
+              Alert.alert('오류', '내서재 초기화 중 문제가 발생했습니다. 다시 시도해 주세요.');
+            } finally {
+              setIsResettingLibrary(false);
+            }
+          })();
+        },
+      },
+    ]);
+  };
+
+  const openEmailModal = () => {
+    setNextEmail(userEmail);
+    setCurrentPassword('');
+    setAccountModalType('email');
+  };
+
+  const openPasswordModal = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setNewPasswordConfirm('');
+    setAccountModalType('password');
+  };
+
+  const closeAccountModal = () => {
+    if (isSavingAccount) {
+      return;
+    }
+
+    resetAccountModal();
+  };
+
+  const resetAccountModal = () => {
+    setAccountModalType(null);
+    setCurrentPassword('');
+    setNextEmail('');
+    setNewPassword('');
+    setNewPasswordConfirm('');
+  };
+
+  const getErrorMessage = (error: any) => {
+    const data = error?.response?.data;
+
+    if (typeof data?.detail === 'string') {
+      return data.detail;
+    }
+
+    if (typeof data === 'string') {
+      return data;
+    }
+
+    if (data && typeof data === 'object') {
+      const firstValue = Object.values(data)[0];
+      if (Array.isArray(firstValue) && firstValue.length > 0) {
+        return String(firstValue[0]);
+      }
+      if (typeof firstValue === 'string') {
+        return firstValue;
+      }
+    }
+
+    return '변경 중 문제가 발생했습니다. 다시 시도해 주세요.';
+  };
+
+  const handleSaveAccountChange = async () => {
+    const trimmedCurrentPassword = currentPassword.trim();
+
+    if (!trimmedCurrentPassword) {
+      Alert.alert('알림', '현재 비밀번호를 입력해 주세요.');
+      return;
+    }
+
+    if (accountModalType === 'email' && !nextEmail.trim()) {
+      Alert.alert('알림', '새 이메일을 입력해 주세요.');
+      return;
+    }
+
+    if (accountModalType === 'password') {
+      if (!newPassword || !newPasswordConfirm) {
+        Alert.alert('알림', '새 비밀번호를 모두 입력해 주세요.');
+        return;
+      }
+
+      if (newPassword !== newPasswordConfirm) {
+        Alert.alert('알림', '새 비밀번호가 일치하지 않습니다.');
+        return;
+      }
+    }
+
+    try {
+      setIsSavingAccount(true);
+      const savedModalType = accountModalType;
+      const updated = await updateMe(
+        accountModalType === 'email'
+          ? {
+              email: nextEmail.trim(),
+              current_password: trimmedCurrentPassword,
+            }
+          : {
+              current_password: trimmedCurrentPassword,
+              new_password: newPassword,
+              new_password_confirm: newPasswordConfirm,
+            }
+      );
+
+      setUser(updated);
+      setUserEmail(updated.email ?? '');
+      resetAccountModal();
+      Alert.alert('완료', savedModalType === 'email' ? '이메일이 변경되었습니다.' : '비밀번호가 변경되었습니다.');
+    } catch (error) {
+      Alert.alert('오류', getErrorMessage(error));
+    } finally {
+      setIsSavingAccount(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -150,23 +303,23 @@ export default function SettingsScreen() {
             </View>
 
             {(accountSectionTitleMatch || accountPasswordMatch) ? (
-              <View style={styles.optionItem}>
+              <Pressable style={styles.optionItem} onPress={openPasswordModal}>
                 <View>
                   <Text style={styles.optionLabel}>비밀번호 변경</Text>
                   <Text style={styles.optionSubLabel}>****</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={28} color="#505258" />
-              </View>
+              </Pressable>
             ) : null}
 
             {(accountSectionTitleMatch || accountEmailMatch) ? (
-              <View style={styles.optionItem}>
+              <Pressable style={styles.optionItem} onPress={openEmailModal}>
                 <View>
                   <Text style={styles.optionLabel}>이메일 변경</Text>
                   <Text style={styles.optionSubLabel}>{userEmail || '(현재 이메일 정보)'}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={28} color="#505258" />
-              </View>
+              </Pressable>
             ) : null}
 
             {(accountSectionTitleMatch || accountLogoutMatch) ? (
@@ -190,13 +343,13 @@ export default function SettingsScreen() {
             </View>
 
             {(notificationSectionTitleMatch || notificationPushMatch) ? (
-              <View style={styles.optionItem}>
+              <Pressable style={styles.optionItem} onPress={handleTogglePushPress}>
                 <View>
                   <Text style={styles.optionLabel}>푸시 알림</Text>
-                  <Text style={styles.optionSubLabel}>ON/OFF</Text>
+                  <Text style={styles.optionSubLabel}>{isPushEnabled ? 'ON' : 'OFF'}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={28} color="#505258" />
-              </View>
+                <Ionicons name={isPushEnabled ? 'toggle' : 'toggle-outline'} size={30} color="#F1BB45" />
+              </Pressable>
             ) : null}
           </View>
         ) : null}
@@ -213,10 +366,14 @@ export default function SettingsScreen() {
             </View>
 
             {(dataSectionTitleMatch || dataResetMatch) ? (
-              <View style={styles.optionItem}>
-                <Text style={styles.optionLabel}>내서재 초기화</Text>
+              <Pressable
+                style={[styles.optionItem, isResettingLibrary && styles.optionItemDisabled]}
+                onPress={handleResetLibraryPress}
+                disabled={isResettingLibrary}
+              >
+                <Text style={styles.optionLabel}>{isResettingLibrary ? '초기화 중...' : '내서재 초기화'}</Text>
                 <Ionicons name="chevron-forward" size={28} color="#505258" />
-              </View>
+              </Pressable>
             ) : null}
           </View>
         ) : null}
@@ -241,6 +398,93 @@ export default function SettingsScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <Modal
+        visible={accountModalType !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeAccountModal}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={closeAccountModal} />
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {accountModalType === 'email' ? '이메일 변경' : '비밀번호 변경'}
+            </Text>
+
+            {accountModalType === 'email' ? (
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>새 이메일</Text>
+                <TextInput
+                  value={nextEmail}
+                  onChangeText={setNextEmail}
+                  style={styles.modalInput}
+                  placeholder="새 이메일"
+                  placeholderTextColor="#A4A7B0"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            ) : (
+              <>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>새 비밀번호</Text>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    style={styles.modalInput}
+                    placeholder="8자 이상"
+                    placeholderTextColor="#A4A7B0"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>새 비밀번호 확인</Text>
+                  <TextInput
+                    value={newPasswordConfirm}
+                    onChangeText={setNewPasswordConfirm}
+                    style={styles.modalInput}
+                    placeholder="한 번 더 입력"
+                    placeholderTextColor="#A4A7B0"
+                    secureTextEntry
+                  />
+                </View>
+              </>
+            )}
+
+            <View style={styles.modalField}>
+              <Text style={styles.modalLabel}>현재 비밀번호</Text>
+              <TextInput
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                style={styles.modalInput}
+                placeholder="현재 비밀번호"
+                placeholderTextColor="#A4A7B0"
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.modalButtonRow}>
+              <Pressable
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={closeAccountModal}
+                disabled={isSavingAccount}
+              >
+                <Text style={styles.modalCancelText}>취소</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.modalSaveButton, isSavingAccount && styles.modalButtonDisabled]}
+                onPress={handleSaveAccountChange}
+                disabled={isSavingAccount}
+              >
+                <Text style={styles.modalSaveText}>{isSavingAccount ? '저장 중' : '저장'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -328,6 +572,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 18,
   },
+  optionItemDisabled: {
+    opacity: 0.55,
+  },
   optionLabel: {
     fontSize: 18,
     color: '#505258',
@@ -352,5 +599,79 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#8A8E98',
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20, 24, 32, 0.42)',
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 18,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#23252E',
+    marginBottom: 18,
+    textAlign: 'center',
+  },
+  modalField: {
+    marginBottom: 14,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#505258',
+    marginBottom: 7,
+  },
+  modalInput: {
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: '#31343C',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  modalButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  modalSaveButton: {
+    backgroundColor: '#FEC54B',
+  },
+  modalButtonDisabled: {
+    opacity: 0.7,
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#676B75',
+  },
+  modalSaveText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

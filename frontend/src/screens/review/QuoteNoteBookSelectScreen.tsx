@@ -61,6 +61,9 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
 
   const currentBook = route.params?.book;
   const selectMode = route.params?.mode ?? 'quote';
+  const visibleTabs = selectMode === 'review'
+    ? TAB_OPTIONS.filter((tab) => tab.key === 'done')
+    : TAB_OPTIONS;
 
   const horizontalPadding = 28;
   const interCardGap = 18;
@@ -93,7 +96,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
       };
 
       await Promise.all(
-        TAB_OPTIONS.map(async (tab) => {
+        visibleTabs.map(async (tab) => {
           try {
             const response = await getMyLibraryBooks(tab.shelf);
             nextBooks[tab.key] = response;
@@ -112,14 +115,15 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
       setErrorByTab(nextErrors);
       setLoadingByTab({ reading: false, done: false });
 
-      const matchedInReading = findMatchedBook(nextBooks.reading);
+      const matchedInReading = selectMode === 'review' ? null : findMatchedBook(nextBooks.reading);
       const matchedInDone = findMatchedBook(nextBooks.done);
       const matched = matchedInReading ?? matchedInDone;
       const matchedTab: SelectTab = matchedInDone ? 'done' : 'reading';
+      const fallbackTab: SelectTab = selectMode === 'review' ? 'done' : 'reading';
 
       setSelectedBook(matched);
-      setActiveTab(matched ? matchedTab : 'reading');
-      setDisplayedTab(matched ? matchedTab : 'reading');
+      setActiveTab(matched ? matchedTab : fallbackTab);
+      setDisplayedTab(matched ? matchedTab : fallbackTab);
     };
 
     void fetchBothTabs();
@@ -127,7 +131,7 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
     return () => {
       mounted = false;
     };
-  }, [currentBook?.external_api_id, currentBook?.isbn13]);
+  }, [currentBook?.external_api_id, currentBook?.isbn13, selectMode]);
 
   const handleTabChange = (nextTab: SelectTab) => {
     if (nextTab === activeTab || isAnimatingRef.current) {
@@ -222,6 +226,11 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
     };
 
     if (selectMode === 'review') {
+      if (selectedBook.shelf_code !== 'DONE') {
+        Alert.alert('알림', '리뷰는 완료한 책에만 작성할 수 있습니다.');
+        return;
+      }
+
       navigation.replace('BookReviewCreate', { book: nextBook });
       return;
     }
@@ -360,11 +369,15 @@ export default function QuoteNoteBookSelectScreen({ navigation, route }: Props) 
           <View
             style={[
               styles.switcherSlider,
-              activeTab === 'reading' ? styles.switcherSliderLeft : styles.switcherSliderRight,
+              selectMode === 'review'
+                ? styles.switcherSliderSingle
+                : activeTab === 'reading'
+                ? styles.switcherSliderLeft
+                : styles.switcherSliderRight,
             ]}
           />
 
-          {TAB_OPTIONS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const active = activeTab === tab.key;
 
             return (
@@ -480,6 +493,11 @@ const styles = StyleSheet.create({
   },
   switcherSliderRight: {
     right: 3,
+  },
+  switcherSliderSingle: {
+    left: 3,
+    right: 3,
+    width: undefined,
   },
   switchTab: {
     flex: 1,

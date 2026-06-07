@@ -59,8 +59,16 @@ export default function QuoteNoteCreateScreen({ navigation, route }: Props) {
   }, [book?.thumbnail]);
 
   const resolveBookId = async () => {
+    const maybeInternalId = (book as { id?: number | string } | undefined)?.id;
+    if (
+      book?.source === 'booklog' &&
+      (typeof maybeInternalId === 'number' || /^\d+$/.test(String(maybeInternalId ?? '')))
+    ) {
+      return Number(maybeInternalId);
+    }
+
     const rawExternalId = `${book?.external_api_id ?? ''}`.trim();
-    if (/^\d+$/.test(rawExternalId)) {
+    if (book?.source === 'library' && /^\d+$/.test(rawExternalId)) {
       return Number(rawExternalId);
     }
 

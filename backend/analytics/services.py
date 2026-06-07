@@ -3,9 +3,12 @@ import logging
 from pathlib import Path
 
 from django.db import transaction
+from django.db.models import Avg, Count, FloatField
+from django.db.models.functions import Cast
 from django.utils import timezone
 
-from analytics.models import ReviewAnalysisResult
+from analytics.models import BookRbtiStat, ReviewAnalysisResult
+from reviews.models import Review
 from rbti.models import RbtiType, UserRbtiSnapshot
 
 logger = logging.getLogger(__name__)
@@ -22,8 +25,21 @@ BOOSTED_REVIEW_LENGTH_THRESHOLD = 200
 def analyze_review_and_update_user_rbti(review):
     _ensure_ai_package_path()
     from ai.predictors.rbti import predict_rbti
+    from ai.predictors.sentiment import (
+        analyze_review_sentiment,
+        fallback_review_sentiment_from_rating,
+    )
 
     prediction = predict_rbti(review.content)
+    try:
+        sentiment = analyze_review_sentiment(review.content, review.rating)
+    except Exception:
+        logger.exception(
+            "Failed to analyze review sentiment. Falling back to rating: review_id=%s",
+            review.id,
+        )
+        sentiment = fallback_review_sentiment_from_rating(review.rating)
+
     rbti_type = RbtiType.objects.filter(
         code=prediction["rbti_code"].strip().upper()
     ).first()
@@ -38,7 +54,9 @@ def analyze_review_and_update_user_rbti(review):
     analysis_result, _ = ReviewAnalysisResult.objects.update_or_create(
         review=review,
         defaults={
-            "sentiment_score": _rating_to_sentiment_score(review.rating),
+            "sentiment_score": _normalize_score(
+                sentiment["final_positive_score"] * 100
+            ),
             "analytic_score": scores["receptive_score"],
             "immersion_score": scores["inquiry_score"],
             "critical_score": scores["analytic_score"],
@@ -47,13 +65,113 @@ def analyze_review_and_update_user_rbti(review):
             "expansion_score": scores["sentence_score"],
             "inferred_rbti_type": rbti_type,
             "confidence_score": prediction["confidence_score"],
-            "model_version": prediction["model_version"],
+            "model_version": f"{prediction['model_version']}|sentiment-v1",
             "analyzed_at": timezone.now(),
         },
     )
 
     rebuild_user_rbti_from_review_analyses(review.user)
+    rebuild_book_rbti_stats(review.book_id)
     return analysis_result
+
+
+def save_rating_based_review_analysis(review):
+    current_snapshot = (
+        UserRbtiSnapshot.objects.select_related("rbti_type")
+        .filter(user=review.user, is_current=True)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+
+    if not current_snapshot:
+        rebuild_book_rbti_stats(review.book_id)
+        return None
+
+    analysis_result, _ = ReviewAnalysisResult.objects.update_or_create(
+        review=review,
+        defaults={
+            "sentiment_score": _rating_to_sentiment_score(review.rating),
+            "analytic_score": current_snapshot.analytic_score,
+            "immersion_score": current_snapshot.immersion_score,
+            "critical_score": current_snapshot.critical_score,
+            "empathy_score": current_snapshot.empathy_score,
+            "practical_score": current_snapshot.practical_score,
+            "expansion_score": current_snapshot.expansion_score,
+            "inferred_rbti_type": current_snapshot.rbti_type,
+            "confidence_score": 1.0,
+            "model_version": "rating-fallback-v1",
+            "analyzed_at": timezone.now(),
+        },
+    )
+    rebuild_book_rbti_stats(review.book_id)
+    return analysis_result
+
+
+@transaction.atomic
+def rebuild_book_rbti_stats(book_id):
+    BookRbtiStat.objects.select_for_update().filter(book_id=book_id).delete()
+
+    grouped_stats = (
+        ReviewAnalysisResult.objects.select_related("review", "review__user", "inferred_rbti_type")
+        .filter(
+            review__book_id=book_id,
+            review__visibility=Review.VISIBILITY_PUBLIC,
+            review__user__rbti_snapshots__is_current=True,
+        )
+        .values("review__user__rbti_snapshots__rbti_type")
+        .annotate(
+            review_count=Count("id"),
+            avg_review_score=Avg(Cast("review__rating", FloatField())),
+            positive_ratio=Avg("sentiment_score"),
+        )
+    )
+
+    now = timezone.now()
+    for stat in grouped_stats:
+        rbti_type_id = stat["review__user__rbti_snapshots__rbti_type"]
+        if not rbti_type_id:
+            continue
+
+        positive_ratio = round(float(stat["positive_ratio"] or 0), 2)
+        review_count = int(stat["review_count"] or 0)
+        representative = (
+            ReviewAnalysisResult.objects.select_related("review", "review__user")
+            .filter(
+                review__book_id=book_id,
+                review__visibility=Review.VISIBILITY_PUBLIC,
+                review__user__rbti_snapshots__is_current=True,
+                review__user__rbti_snapshots__rbti_type_id=rbti_type_id,
+            )
+            .order_by("-sentiment_score", "-review__like_count", "-review__created_at", "-review_id")
+            .first()
+        )
+
+        BookRbtiStat.objects.create(
+            book_id=book_id,
+            rbti_type_id=rbti_type_id,
+            review_count=review_count,
+            avg_review_score=round(float(stat["avg_review_score"] or 0), 2),
+            positive_ratio=positive_ratio,
+            weighted_score=round(positive_ratio * _review_count_weight(review_count), 2),
+            representative_review=representative.review if representative else None,
+            calculated_at=now,
+        )
+
+
+def get_top_positive_rbti_for_book(book_id):
+    if not BookRbtiStat.objects.filter(book_id=book_id).exists():
+        rebuild_book_rbti_stats(book_id)
+
+    return (
+        BookRbtiStat.objects.select_related(
+            "rbti_type",
+            "representative_review",
+            "representative_review__user",
+        )
+        .filter(book_id=book_id, review_count__gt=0)
+        .order_by("-positive_ratio", "-review_count", "rbti_type__code")
+        .first()
+    )
 
 
 @transaction.atomic
@@ -209,6 +327,10 @@ def _normalize_score(score):
 
 def _rating_to_sentiment_score(rating):
     return round((rating / 5) * 100, 2)
+
+
+def _review_count_weight(review_count):
+    return min(1.0, max(review_count, 1) / 5)
 
 
 def _ensure_ai_package_path():

@@ -23,6 +23,13 @@ export interface User {
   updated_at: string;
 }
 
+export interface UpdateMePayload {
+  email?: string;
+  current_password: string;
+  new_password?: string;
+  new_password_confirm?: string;
+}
+
 export const signup = async (payload: SignupPayload) => {
   const { data } = await api.post('/users/signup/', payload);
   return data;
@@ -35,6 +42,11 @@ export const login = async (payload: LoginPayload) => {
 
 export const getMe = async (): Promise<User> => {
   const { data } = await api.get<User>('/users/me/');
+  return data;
+};
+
+export const updateMe = async (payload: UpdateMePayload): Promise<User> => {
+  const { data } = await api.patch<User>('/users/me/', payload);
   return data;
 };
 
