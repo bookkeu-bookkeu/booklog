@@ -14,7 +14,7 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
       <p>서비스 실행 모습과<br>주요 기능을 확인할 수 있습니다.</p>
     </td>
     <td align="center" width="33%">
-      <a href="포스터_PDF_경로">
+      <a href="북로그_포스터.pdf">
         <strong>🖼️ Poster PDF</strong>
       </a>
       <p>졸업전시 포스터<br>PDF 파일입니다.</p>
