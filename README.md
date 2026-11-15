@@ -8,25 +8,19 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
 
 <table>
   <tr>
-    <td align="center" width="25%">
-      <a href="시연영상_URL">
+    <td align="center" width="33%">
+      <a href="https://drive.google.com/file/d/1BCx0X3TJ7kcFUfLb_OgsMT1HRhj2EZTs/view?usp=sharing">
         <h3>🎬 시연 영상</h3>
       </a>
       <p>서비스 실행 모습과<br>주요 기능을 확인할 수 있습니다.</p>
     </td>
-    <td align="center" width="25%">
-      <a href="ITPT_URL">
-        <h3>🔗 ITPT 링크</h3>
-      </a>
-      <p>프로젝트 소개 및<br>관련 페이지로 이동합니다.</p>
-    </td>
-    <td align="center" width="25%">
+    <td align="center" width="33%">
       <a href="포스터_PDF_경로">
         <h3>🖼️ Poster PDF</h3>
       </a>
       <p>졸업전시 포스터<br>PDF 파일입니다.</p>
     </td>
-    <td align="center" width="25%">
+    <td align="center" width="34%">
       <a href="결과보고서_PDF_경로">
         <h3>📄 결과 보고서 PDF</h3>
       </a>
@@ -35,13 +29,6 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
   </tr>
 </table>
 
-
-
-## 시연 영상
-
-**[BookLog 시연 영상 보기](https://drive.google.com/file/d/1BCx0X3TJ7kcFUfLb_OgsMT1HRhj2EZTs/view?usp=sharing)**
-
-Google Drive에서 BookLog 앱의 주요 기능을 시연한 영상을 확인할 수 있습니다.
 
 ## 주요 기능
 
