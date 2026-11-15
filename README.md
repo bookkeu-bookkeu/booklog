@@ -20,7 +20,7 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
       <p>졸업전시 포스터<br>PDF 파일입니다.</p>
     </td>
     <td align="center" width="34%">
-      <a href="https://github.com/bookkeu-bookkeu/booklog/blob/main/%EB%B6%81%EB%A1%9C%EA%B7%B8_%EA%B2%B0%EA%B3%BC%EB%B3%B4%EA%B3%A0%EC%84%9C.pdf">
+      <a href="북로그_결과보고서.pdf">
         <strong>📄 결과 보고서 PDF</strong>
       </a>
       <p>프로젝트 진행 내용과<br>결과를 담은 보고서입니다.</p>
