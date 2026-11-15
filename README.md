@@ -5,8 +5,6 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
 
 
 ## 🎓 졸업전시 제출 자료
-
-## 🎓 졸업전시 제출 자료
 <table>
   <tr>
     <td align="center" width="33%">
