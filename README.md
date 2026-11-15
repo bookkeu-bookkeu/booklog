@@ -8,7 +8,7 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
 <table>
   <tr>
     <td align="center" width="33%">
-      <a href="https://drive.google.com/file/d/1BCx0X3TJ7kcFUfLb_OgsMT1HRhj2EZTs/view?usp=sharing">
+      <a href="https://drive.google.com/file/d/1aKquaXfSmALN-TvNN1eTXyTM7szmY0VS/view?usp=sharing">
         <strong>🎬 시연 영상</strong>
       </a>
       <p>서비스 실행 모습과<br>주요 기능을 확인할 수 있습니다.</p>
