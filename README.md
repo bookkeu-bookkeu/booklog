@@ -6,28 +6,30 @@ BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향
 
 ## 🎓 졸업전시 제출 자료
 
+## 🎓 졸업전시 제출 자료
 <table>
   <tr>
     <td align="center" width="33%">
       <a href="https://drive.google.com/file/d/1BCx0X3TJ7kcFUfLb_OgsMT1HRhj2EZTs/view?usp=sharing">
-        <h3>🎬 시연 영상</h3>
+        <strong>🎬 시연 영상</strong>
       </a>
       <p>서비스 실행 모습과<br>주요 기능을 확인할 수 있습니다.</p>
     </td>
     <td align="center" width="33%">
       <a href="포스터_PDF_경로">
-        <h3>🖼️ Poster PDF</h3>
+        <strong>🖼️ Poster PDF</strong>
       </a>
       <p>졸업전시 포스터<br>PDF 파일입니다.</p>
     </td>
     <td align="center" width="34%">
       <a href="결과보고서_PDF_경로">
-        <h3>📄 결과 보고서 PDF</h3>
+        <strong>📄 결과 보고서 PDF</strong>
       </a>
       <p>프로젝트 진행 내용과<br>결과를 담은 보고서입니다.</p>
     </td>
   </tr>
 </table>
+
 
 
 ## 주요 기능
