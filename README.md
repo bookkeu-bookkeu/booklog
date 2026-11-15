@@ -81,7 +81,6 @@ booklog/
 │  ├─ src/navigation/      # 앱 네비게이션
 │  ├─ src/screens/         # 화면 단위 구현
 │  └─ src/store/           # 전역 상태 관리
-├─ sentiment_compat.py    # 모델 호환용 공통 코드
 └─ README.md
 ```
 
@@ -198,7 +197,6 @@ Git에 포함되는 주요 파일은 다음과 같습니다.
 - `backend/`의 Django 애플리케이션 코드, 마이그레이션, 라우팅, 서비스, 테스트 파일
 - `frontend/`의 React Native / Expo 코드, 화면, 컴포넌트, 상태 관리, 네비게이션, 설정 파일
 - `ai/`의 추론 로직 코드와 헬퍼 코드
-- `sentiment_compat.py`
 - 프론트엔드 정적 자산 이미지 파일
 
 Git에서 제외되는 주요 파일은 다음과 같습니다.
