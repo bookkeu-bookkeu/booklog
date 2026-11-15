@@ -3,6 +3,12 @@
 BookLog는 사용자의 독서 기록, 리뷰, 문장 노트, RBTI 독서 성향을 관리하는 모바일 앱 프로젝트입니다.  
 프론트엔드는 React Native / Expo, 백엔드는 Django REST Framework로 구성되어 있으며, 도서 검색에는 Kakao Book API와 도서관 정보나루 API를 사용합니다. 리뷰 텍스트는 로컬 AI 모델을 통해 RBTI 축별 성향 분석에 활용됩니다.
 
+## 시연 영상
+
+**[BookLog 시연 영상 보기](https://drive.google.com/file/d/1BCx0X3TJ7kcFUfLb_OgsMT1HRhj2EZTs/view?usp=sharing)**
+
+Google Drive에서 BookLog 앱의 주요 기능을 시연한 영상을 확인할 수 있습니다.
+
 ## 주요 기능
 
 - 회원가입, 로그인, JWT 기반 인증
