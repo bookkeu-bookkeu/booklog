@@ -121,6 +121,8 @@ ai/
 
 각 모델 폴더에는 `config.json`, 토크나이저 파일, `model.safetensors` 또는 `pytorch_model.bin`이 필요합니다.
 
+모델 파일은 GitHub Release의 [BookLog AI Model Files](https://github.com/bookkeu-bookkeu/booklog/releases/tag/graduation-2026)에서 다운로드할 수 있습니다. Release의 `models.zip` 또는 축별 ZIP 파일을 다운로드한 뒤 압축을 해제하고, 위의 `ai/models/` 경로에 `model_axis1_RI/`, `model_axis2_AE/`, `model_axis3_NS/` 폴더가 위치하도록 배치합니다.
+
 ## Backend 실행
 
 ```bash
@@ -201,7 +203,7 @@ Git에 포함되는 주요 파일은 다음과 같습니다.
 
 Git에서 제외되는 주요 파일은 다음과 같습니다.
 
-- `ai/models/` 아래의 AI 모델 파일 전체
+- `ai/models/` 아래의 AI 모델 파일 전체 (모델 파일은 [GitHub Release](https://github.com/bookkeu-bookkeu/booklog/releases/tag/graduation-2026)로 배포)
 - `*.safetensors`, `*.bin`, `*.pt`, `*.pth` 같은 대용량 모델 가중치 파일
 - `backend/.env` 같은 환경 변수 파일
 - `backend/ngrok.yml` 같은 로컬 실행용 설정 파일
@@ -217,5 +219,5 @@ AI 모델 파일은 용량이 크고 바이너리 형식이라 Git 저장소에 
 
 - PostgreSQL 데이터베이스가 먼저 생성되어 있어야 `migrate`가 정상 실행됩니다.
 - 신규 환경에서는 `seed_shelves`, `seed_rbti_types` 명령을 실행해야 기본 책장과 RBTI 유형 데이터가 생성됩니다.
-- 리뷰 분석 기능은 AI 모델 파일이 없으면 실행 중 `FileNotFoundError`가 발생할 수 있습니다.
+- 리뷰 분석 기능은 AI 모델 파일이 없으면 분석이 수행되지 않으며, 백엔드 로그에 분석 실패가 기록됩니다.
 - 외부 도서 검색 기능은 Kakao REST API 키가 설정되어 있어야 사용할 수 있습니다.
