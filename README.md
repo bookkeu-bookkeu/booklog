@@ -151,18 +151,6 @@ npm install
 npm start
 ```
 
-안드로이드 에뮬레이터로 실행할 경우:
-
-```bash
-npm run android
-```
-
-웹으로 실행할 경우:
-
-```bash
-npm run web
-```
-
 백엔드 주소는 `frontend/src/constants/config.ts`의 `API_BASE_URL`에서 관리합니다. 로컬 서버를 직접 사용할 경우 예시는 다음과 같습니다.
 
 ```ts
