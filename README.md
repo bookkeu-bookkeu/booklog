@@ -208,4 +208,4 @@ AI 모델 파일은 용량이 크고 바이너리 형식이라 Git 저장소에 
 - PostgreSQL 데이터베이스가 먼저 생성되어 있어야 `migrate`가 정상 실행됩니다.
 - 신규 환경에서는 `seed_shelves`, `seed_rbti_types` 명령을 실행해야 기본 책장과 RBTI 유형 데이터가 생성됩니다.
 - 리뷰 분석 기능은 AI 모델 파일이 없으면 분석이 수행되지 않으며, 백엔드 로그에 분석 실패가 기록됩니다.
-- 외부 도서 검색 기능은 Kakao REST API 키가 설정되어 있어야 사용할 수 있습니다.
+- Kakao 기반 외부 도서 검색 기능은 `KAKAO_REST_API_KEY`가, 도서 설명·KDC·주제 분류 보강 기능은 `DATA4LIBRARY_AUTH_KEY`가 설정되어 있어야 사용할 수 있습니다.
