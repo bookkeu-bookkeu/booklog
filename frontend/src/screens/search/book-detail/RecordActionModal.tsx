@@ -21,7 +21,15 @@ export default function RecordActionModal({
   onClose,
 }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.recordSheetOverlay}>
         <Pressable style={styles.recordSheetBackdrop} onPress={onClose} />
 
